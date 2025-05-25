@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id                   BigInt     @id @default(autoincrement())
+  Name                 String
+  Created_At           DateTime   @default(now())
+  Max_User             Int
+  Suspscription_package String
+  Sub_end_time         DateTime
+
+  users                User[]
+
+  @@map("companies")
+}
+
+model User {
+  id           BigInt     @id @default(autoincrement())
+  Name         String
+  Mail         String     @unique
+  password     String
+  is_confirm   Boolean    @default(false)
+  is_SuperAdmin Boolean   @default(false)
+  is_active    Boolean    @default(true)
+
+  company_id   BigInt
+  company      Company    @relation(fields: [company_id], references: [id])
+
+  permissions  Users_Permissions[]
+  confirmTokens ConfirmToken[]
+
+  @@map("users")
+}
+
+model Permissions {
+  id     BigInt     @id @default(autoincrement())
+  Name   String
+  Type   String
+
+  users  Users_Permissions[]
+
+  @@map("permissions")
+}
+
+model Users_Permissions {
+  id            BigInt      @id @default(autoincrement())
+  User_id       BigInt
+  Permission_id BigInt
+
+  user          User        @relation(fields: [User_id], references: [id])
+  permission    Permissions @relation(fields: [Permission_id], references: [id])
+
+  @@map("users_permissions")
+}
+
+model ConfirmToken {
+  id        BigInt   @id @default(autoincrement())
+  user_id   BigInt
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [user_id], references: [id])
+
+  @@map("confirm_tokens")
+}
