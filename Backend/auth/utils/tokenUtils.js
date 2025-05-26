@@ -7,15 +7,20 @@ async function createConfirmToken(userId) {
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 saat
 
-  await prisma.confirmToken.create({
-    data: {
-      user_id: Number(userId),
-      token,
-      expiresAt,
-    },
-  });
-
-  return token;
+  try {
+    await prisma.confirmToken.create({
+      data: {
+        user_id: BigInt(userId),
+        token,
+        expiresAt,
+      },
+    });
+    console.log('Confirm token başarıyla oluşturuldu:', token);
+    return token;
+  } catch (error) {
+    console.error('Confirm token oluşturma hatası:', error);
+    throw error;
+  }
 }
 
 function createJWTToken(userId, userMail, companyId) {
@@ -38,8 +43,25 @@ function verifyJWTToken(token) {
   }
 }
 
+async function createInviteToken(companyId, email) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 gün
+
+  await prisma.invite.create({
+    data: {
+      Company_id: BigInt(companyId),
+      mail: email,
+      invite_token: token,
+      expires_at: expiresAt,
+    },
+  });
+
+  return token;
+}
+
 module.exports = { 
   createConfirmToken, 
   createJWTToken, 
-  verifyJWTToken 
+  verifyJWTToken,
+  createInviteToken
 };

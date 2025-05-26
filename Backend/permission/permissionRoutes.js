@@ -17,6 +17,13 @@ const {
 // Tüm permission'ları listeleme (kimlik doğrulama yeterli)
 router.get('/permissions', authenticateToken, getAllPermissions);
 
+// Kullanıcının kendi yetkilerini görme
+router.get('/my-permissions', authenticateToken, (req, res) => {
+  // req.user.id'yi params'a ekleyerek getUserPermissions'ı kullan
+  req.params.userId = req.user.id.toString();
+  getUserPermissions(req, res);
+});
+
 // Şirketteki kullanıcıları listeleme (USER_MANAGEMENT yetkisi gerekli)
 router.get('/company-users', 
   authenticateToken, 
