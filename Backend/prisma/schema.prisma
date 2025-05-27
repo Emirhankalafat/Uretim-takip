@@ -17,6 +17,8 @@ model Company {
 
   users                User[]
   invites              Invite[]
+  categories           Categories[]
+  products             Products[]
 
   @@map("companies")
 }
@@ -85,4 +87,29 @@ model Invite {
   company      Company  @relation(fields: [Company_id], references: [id])
 
   @@map("invites")
+}
+
+model Categories {
+  id          BigInt    @id @default(autoincrement())
+  Name        String
+  Description String?
+  Company_id  BigInt
+  
+  company     Company   @relation(fields: [Company_id], references: [id])
+  products    Products[]
+  
+  @@map("categories")
+}
+
+model Products {
+  id          BigInt     @id @default(autoincrement())
+  name        String
+  description String?
+  Category_id BigInt
+  Company_id  BigInt
+  
+  category    Categories @relation(fields: [Category_id], references: [id])
+  company     Company    @relation(fields: [Company_id], references: [id])
+  
+  @@map("products")
 }

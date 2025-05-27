@@ -8,6 +8,8 @@ import AcceptInvitePage from '../features/auth/pages/AcceptInvitePage'
 import InviteSuccessPage from '../features/auth/pages/InviteSuccessPage'
 import UserManagementPage from '../features/users/pages/UserManagementPage'
 import UserInvitePage from '../features/users/pages/UserInvitePage'
+import CategoriesPage from '../features/categories/pages/CategoriesPage'
+import ProductsPage from '../features/products/pages/ProductsPage'
 import DashboardPage from '../pages/DashboardPage'
 import MainLayout from '../layouts/MainLayout'
 
@@ -151,6 +153,26 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <UserInvitePage />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Categories Route */}
+      <Route 
+        path="/categories" 
+        element={
+          <ProtectedRoute>
+            <CategoriesPage />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Products Route */}
+      <Route 
+        path="/products" 
+        element={
+          <ProtectedRoute>
+            <ProductsPage />
           </ProtectedRoute>
         } 
       />

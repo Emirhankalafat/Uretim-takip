@@ -5,6 +5,8 @@ const app = express();
 const authRoutes = require('./auth/authRoutes');
 const permissionRoutes = require('./permission/permissionRoutes');
 const userRoutes = require('./user/userRoutes');
+const categoryRoutes = require('./category/categoryRoutes');
+const productRoutes = require('./product/productRoutes');
 require('dotenv').config();
 
 // CORS ayarları
@@ -20,6 +22,8 @@ app.use(cookieParser()); // Cookie parse
 app.use('/api/auth', authRoutes); // /api/auth altına yönlendir
 app.use('/api/permissions', permissionRoutes); // /api/permissions altına yönlendir
 app.use('/api/user', userRoutes); // /api/user altına yönlendir
+app.use('/api/categories', categoryRoutes); // /api/categories altına yönlendir
+app.use('/api/products', productRoutes); // /api/products altına yönlendir
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

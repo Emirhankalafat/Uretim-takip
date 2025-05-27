@@ -144,10 +144,11 @@ const UserManagementPage = () => {
   // Yetki kontrolü - usePermissions loading bitene kadar bekle
   if (permissionsLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Yetkiler kontrol ediliyor...</p>
+          <div className="w-16 h-16 spinner mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Yetkiler kontrol ediliyor...</p>
+          <p className="text-gray-400 text-sm mt-2">Lütfen bekleyiniz</p>
         </div>
       </div>
     )
@@ -160,176 +161,158 @@ const UserManagementPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Kullanıcılar yükleniyor...</p>
+          <div className="w-16 h-16 spinner mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Kullanıcılar yükleniyor...</p>
+          <p className="text-gray-400 text-sm mt-2">Veriler getiriliyor</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        
-        {/* Header */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Yetki Yönetimi</h1>
-                <p className="mt-1 text-sm text-gray-600">
-                  Kullanıcıların yetkilerini görüntüleyin ve düzenleyin
-                </p>
+    <div className="space-y-8 animate-fade-in">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl shadow-strong p-8 text-white">
+        <div className="flex items-center space-x-4">
+          <div className="w-16 h-16 bg-white bg-opacity-20 rounded-xl flex items-center justify-center animate-float">
+            <span className="text-3xl">👥</span>
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold">Kullanıcı Yönetimi</h1>
+            <p className="text-primary-100 mt-2">Kullanıcıları yönetin ve yetkileri düzenleyin</p>
+            <div className="flex items-center space-x-4 mt-4">
+              <div className="bg-white bg-opacity-20 rounded-lg px-3 py-1">
+                <span className="text-sm font-medium">{users.length} Kullanıcı</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  {users.length} Kullanıcı
-                </span>
-                {currentUser?.is_SuperAdmin && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    SuperAdmin
-                  </span>
-                )}
+              {currentUser?.is_SuperAdmin && (
+                <div className="bg-danger-500 bg-opacity-80 rounded-lg px-3 py-1">
+                  <span className="text-sm font-medium">SuperAdmin</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-gradient-to-r from-danger-50 to-danger-100 border border-danger-200 rounded-xl p-4 shadow-soft animate-slide-up">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-danger-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm">⚠</span>
+              </div>
+              <div className="text-danger-800 font-medium">{error}</div>
+            </div>
+            <button 
+              onClick={() => setError(null)}
+              className="text-danger-400 hover:text-danger-600 text-xl font-bold transition-colors"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Users List */}
+        <div className="bg-white rounded-2xl shadow-strong border border-gray-100">
+          <div className="p-6 border-b border-gray-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl flex items-center justify-center">
+                  <span className="text-white text-lg">👤</span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Kullanıcılar</h2>
+                  <p className="text-gray-500 text-sm">Yetki düzenlemek için kullanıcı seçin</p>
+                </div>
+              </div>
+              <div className="bg-gradient-to-r from-primary-100 to-primary-200 text-primary-800 px-3 py-1 rounded-full text-sm font-medium">
+                {users.length} kişi
               </div>
             </div>
           </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="mx-6 mt-4 rounded-md bg-red-50 p-4">
-              <div className="flex">
-                <div className="text-sm text-red-700">{error}</div>
-                <button 
-                  onClick={() => setError(null)}
-                  className="ml-auto text-red-400 hover:text-red-600 text-lg font-bold"
+          <div className="p-6">
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {users.map((user) => (
+                <div
+                  key={user.id}
+                  onClick={() => selectUser(user)}
+                  className={`card-hover cursor-pointer p-4 rounded-xl border-2 transition-all duration-300 ${
+                    selectedUser?.id === user.id
+                      ? 'border-primary-300 bg-gradient-to-r from-primary-50 to-primary-100 shadow-medium'
+                      : 'border-gray-200 bg-gradient-to-r from-gray-50 to-white hover:border-primary-200 hover:shadow-soft'
+                  }`}
                 >
-                  ×
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Users Table */}
-          <div className="px-6 py-4">
-            {users.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-gray-400 text-sm">
-                  Henüz kullanıcı bulunmuyor.
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shadow-soft ${
+                        user.is_SuperAdmin 
+                          ? 'bg-gradient-to-r from-danger-500 to-danger-600' 
+                          : 'bg-gradient-to-r from-primary-500 to-primary-600'
+                      }`}>
+                        {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <h3 className="font-semibold text-gray-900">{user.name}</h3>
+                          {user.is_SuperAdmin && (
+                            <span className="permission-badge bg-gradient-to-r from-danger-100 to-danger-200 text-danger-800 border border-danger-300">
+                              SuperAdmin
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-500 text-sm">{user.email}</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span className="permission-badge bg-gradient-to-r from-success-100 to-success-200 text-success-800 border border-success-300">
+                            {user.permissionCount} yetki
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    {selectedUser?.id === user.id && (
+                      <div className="w-3 h-3 bg-primary-500 rounded-full animate-pulse"></div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Kullanıcı
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        E-posta
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Durum
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Yetki Sayısı
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Kayıt Tarihi
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        İşlemler
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {users.map((user) => (
-                      <tr 
-                        key={user.id} 
-                        className={`hover:bg-gray-50 cursor-pointer ${
-                          selectedUser?.id === user.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
-                        }`}
-                        onClick={() => selectUser(user)}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10">
-                              <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                                <span className="text-sm font-medium text-primary-700">
-                                  {user.name?.charAt(0)?.toUpperCase() || 'U'}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                {user.name || 'İsimsiz Kullanıcı'}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                ID: {user.id}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {user.email}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex flex-col space-y-1">
-                            {user.is_SuperAdmin ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                SuperAdmin
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Kullanıcı
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            {user.permissionCount || 0} Yetki
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {user.createdAt ? new Date(user.createdAt).toLocaleDateString('tr-TR') : 'Bilinmiyor'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <span className="text-primary-600 text-sm font-medium">
-                            {selectedUser?.id === user.id ? 'Seçili' : 'Seç'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Permission Management Section */}
         {selectedUser && (
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
+          <div className="bg-white rounded-2xl shadow-strong border border-gray-100 animate-slide-up">
+            <div className="p-6 border-b border-gray-100">
               <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-lg font-medium text-gray-900">
-                    {selectedUser.name} - Yetki Yönetimi
-                  </h2>
-                  <p className="text-sm text-gray-500">{selectedUser.email}</p>
+                <div className="flex items-center space-x-3">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shadow-medium ${
+                    selectedUser.is_SuperAdmin 
+                      ? 'bg-gradient-to-r from-danger-500 to-danger-600' 
+                      : 'bg-gradient-to-r from-primary-500 to-primary-600'
+                  }`}>
+                    {selectedUser.name?.charAt(0)?.toUpperCase() || 'U'}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">
+                      {selectedUser.name} - Yetki Yönetimi
+                    </h2>
+                    <p className="text-gray-500">{selectedUser.email}</p>
+                  </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   {selectedUser.is_SuperAdmin && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    <span className="permission-badge bg-gradient-to-r from-danger-100 to-danger-200 text-danger-800 border border-danger-300">
                       SuperAdmin
                     </span>
                   )}
                   <button
                     onClick={clearSelection}
-                    className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+                    className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
                   >
                     ×
                   </button>
@@ -337,11 +320,11 @@ const UserManagementPage = () => {
               </div>
             </div>
 
-            <div className="px-6 py-4">
+            <div className="p-6">
               {permissionLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-                  <p className="mt-2 text-sm text-gray-600">Yetkiler yükleniyor...</p>
+                <div className="text-center py-12">
+                  <div className="w-12 h-12 spinner mx-auto mb-4"></div>
+                  <p className="text-gray-600 font-medium">Yetkiler yükleniyor...</p>
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -354,43 +337,58 @@ const UserManagementPage = () => {
                       return groups
                     }, {})
                   ).map(([type, permissions]) => (
-                    <div key={type} className="space-y-3">
-                      <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">
-                        {type === 'USER' && '👤 Kullanıcı Yetkileri'}
-                        {type === 'ADMIN' && '⚙️ Yönetici Yetkileri'}
-                        {type === 'PRODUCTION' && '🏭 Üretim Yetkileri'}
-                        {type === 'REPORT' && '📊 Rapor Yetkileri'}
-                        {type === 'SYSTEM' && '🔧 Sistem Yetkileri'}
-                        {!['USER', 'ADMIN', 'PRODUCTION', 'REPORT', 'SYSTEM'].includes(type) && `📋 ${type}`}
-                      </h3>
+                    <div key={type} className="space-y-4">
+                      <div className="flex items-center space-x-3 pb-3 border-b border-gray-200">
+                        <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
+                          <span className="text-white text-sm">
+                            {type === 'USER' && '👤'}
+                            {type === 'ADMIN' && '⚙️'}
+                            {type === 'PRODUCTION' && '🏭'}
+                            {type === 'REPORT' && '📊'}
+                            {type === 'SYSTEM' && '🔧'}
+                            {!['USER', 'ADMIN', 'PRODUCTION', 'REPORT', 'SYSTEM'].includes(type) && '📋'}
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900">
+                          {type === 'USER' && 'Kullanıcı Yetkileri'}
+                          {type === 'ADMIN' && 'Yönetici Yetkileri'}
+                          {type === 'PRODUCTION' && 'Üretim Yetkileri'}
+                          {type === 'REPORT' && 'Rapor Yetkileri'}
+                          {type === 'SYSTEM' && 'Sistem Yetkileri'}
+                          {!['USER', 'ADMIN', 'PRODUCTION', 'REPORT', 'SYSTEM'].includes(type) && `${type} Yetkileri`}
+                        </h3>
+                      </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 gap-3">
                         {permissions.map((permission) => {
                           const hasThisPermission = userPermissions.some(up => 
                             Number(up.id) === Number(permission.id)
                           )
                           
+                          // Yetki kontrolü - AYNEN KORUNDU
                           const canModify = currentUser?.is_SuperAdmin || 
                             (permission.Name !== 'USER_MANAGEMENT' && !selectedUser.is_SuperAdmin)
                           
                           return (
-                            <div key={permission.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div key={permission.id} className="card-hover bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl p-4 transition-all duration-300">
                               <div className="flex justify-between items-start mb-3">
                                 <div className="flex-1">
-                                  <h4 className="text-sm font-medium text-gray-900 mb-1">
-                                    {permission.Name}
-                                  </h4>
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <h4 className="font-semibold text-gray-900">
+                                      {permission.Name}
+                                    </h4>
+                                    <span className={`permission-badge ${
+                                      hasThisPermission 
+                                        ? 'permission-badge-active' 
+                                        : 'permission-badge-inactive'
+                                    }`}>
+                                      {hasThisPermission ? '✓ Aktif' : '✗ Pasif'}
+                                    </span>
+                                  </div>
                                   <p className="text-xs text-gray-500">
                                     ID: {permission.id}
                                   </p>
                                 </div>
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                  hasThisPermission 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {hasThisPermission ? '✓ Var' : '✗ Yok'}
-                                </span>
                               </div>
                               
                               {canModify && (
@@ -399,19 +397,21 @@ const UserManagementPage = () => {
                                     ? handleRemovePermission(selectedUser.id, permission.id)
                                     : handleAddPermission(selectedUser.id, permission.id)
                                   }
-                                  className={`w-full px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                                  className={`btn-modern w-full px-4 py-3 rounded-lg font-medium transition-all duration-300 ${
                                     hasThisPermission
-                                      ? 'text-red-700 bg-red-50 hover:bg-red-100 border border-red-200'
-                                      : 'text-green-700 bg-green-50 hover:bg-green-100 border border-green-200'
+                                      ? 'bg-gradient-to-r from-danger-500 to-danger-600 text-white hover:from-danger-600 hover:to-danger-700 shadow-soft glow-danger'
+                                      : 'bg-gradient-to-r from-success-500 to-success-600 text-white hover:from-success-600 hover:to-success-700 shadow-soft glow-success'
                                   }`}
                                 >
-                                  {hasThisPermission ? '✗ Çıkar' : '+ Ekle'}
+                                  {hasThisPermission ? '✗ Yetkiyi Çıkar' : '+ Yetki Ekle'}
                                 </button>
                               )}
                               
                               {!canModify && (
-                                <div className="text-xs text-gray-400 text-center py-2">
-                                  {permission.Name === 'USER_MANAGEMENT' ? 'Sadece SuperAdmin değiştirebilir' : 'Değiştirilemez'}
+                                <div className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-500 text-center py-3 rounded-lg border border-gray-300">
+                                  <span className="text-sm font-medium">
+                                    {permission.Name === 'USER_MANAGEMENT' ? '🔒 Sadece SuperAdmin değiştirebilir' : '🚫 Değiştirilemez'}
+                                  </span>
                                 </div>
                               )}
                             </div>
@@ -422,22 +422,6 @@ const UserManagementPage = () => {
                   ))}
                 </div>
               )}
-            </div>
-          </div>
-        )}
-
-        {/* Help Text */}
-        {!selectedUser && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex">
-              <div className="text-blue-600 mr-3">ℹ️</div>
-              <div>
-                <h3 className="text-sm font-medium text-blue-800">Nasıl Kullanılır?</h3>
-                <p className="text-sm text-blue-700 mt-1">
-                  Yukarıdaki tabloda bir kullanıcıya tıklayarak o kullanıcının yetkilerini yönetebilirsiniz. 
-                  Yetkiler gerçek zamanlı olarak eklenir ve çıkarılır.
-                </p>
-              </div>
             </div>
           </div>
         )}
