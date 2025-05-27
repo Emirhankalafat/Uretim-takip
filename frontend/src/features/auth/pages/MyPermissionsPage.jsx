@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSelector } from 'react-redux'
+import api from '../../../services/api'
 
 const MyPermissionsPage = () => {
   const [permissions, setPermissions] = useState([])
@@ -14,20 +15,8 @@ const MyPermissionsPage = () => {
   const fetchPermissions = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/permissions/my-permissions', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setPermissions(data.data.permissions || [])
-      } else {
-        setError('Yetkiler yüklenirken hata oluştu')
-      }
+      const response = await api.get('/permissions/my-permissions')
+      setPermissions(response.data.data.permissions || [])
     } catch (error) {
       setError('Yetkiler yüklenirken hata oluştu')
     } finally {

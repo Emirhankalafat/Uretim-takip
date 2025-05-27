@@ -2,7 +2,15 @@ const bcrypt = require('bcryptjs');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 require('dotenv').config();
-const { createConfirmToken, createJWTToken } = require('./utils/tokenUtils');
+const { 
+  createConfirmToken, 
+  createJWTToken, 
+  createRefreshToken, 
+  saveRefreshToken,
+  verifyRefreshToken,
+  revokeRefreshToken,
+  revokeAllUserRefreshTokens
+} = require('./utils/tokenUtils');
 const { sendConfirmEmail } = require('./utils/emailUtils');
 
 const registerCompanyUser = async (req, res) => {
@@ -170,15 +178,26 @@ const loginUser = async (req, res) => {
       return res.status(403).json({ message: 'Hesabınız henüz onaylanmamış. Lütfen e-posta adresinizi kontrol edin.' });
     }
 
-    // JWT token oluştur
-    const token = createJWTToken(Number(user.id), user.Mail, Number(user.company_id));
+    // JWT access token oluştur (15 dakika)
+    const accessToken = createJWTToken(Number(user.id), user.Mail, Number(user.company_id));
+    
+    // Refresh token oluştur (7 gün)
+    const refreshToken = createRefreshToken();
+    await saveRefreshToken(Number(user.id), refreshToken);
 
-    // Cookie'ye token'ı kaydet (15 dakika)
-    res.cookie('auth_token', token, {
+    // Cookie'lere token'ları kaydet
+    res.cookie('accessToken', accessToken, {
       httpOnly: true, // XSS saldırılarına karşı koruma
       secure: process.env.NODE_ENV === 'production', // HTTPS'de secure flag
       sameSite: 'strict', // CSRF saldırılarına karşı koruma
       maxAge: 15 * 60 * 1000 // 15 dakika (milisaniye cinsinden)
+    });
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 gün (milisaniye cinsinden)
     });
 
     res.status(200).json({
@@ -201,10 +220,93 @@ const loginUser = async (req, res) => {
   }
 };
 
-const logoutUser = (req, res) => {
+// Refresh token ile yeni access token alma
+const refreshAccessToken = async (req, res) => {
   try {
-    // Cookie'yi temizle
-    res.clearCookie('auth_token', {
+    const { refreshToken } = req.cookies;
+
+    if (!refreshToken) {
+      return res.status(401).json({ message: 'Refresh token bulunamadı.' });
+    }
+
+    // Refresh token'ı doğrula
+    const tokenRecord = await verifyRefreshToken(refreshToken);
+    
+    if (!tokenRecord) {
+      return res.status(401).json({ message: 'Geçersiz veya süresi dolmuş refresh token.' });
+    }
+
+    // Kullanıcı bilgilerini al
+    const user = await prisma.user.findUnique({
+      where: { id: tokenRecord.userId },
+      include: { company: true }
+    });
+
+    if (!user || !user.is_active || !user.is_confirm) {
+      return res.status(401).json({ message: 'Kullanıcı hesabı aktif değil.' });
+    }
+
+    // Eski refresh token'ı revoke et
+    await revokeRefreshToken(tokenRecord.id);
+
+    // Yeni access token ve refresh token oluştur (token rotasyonu)
+    const newAccessToken = createJWTToken(Number(user.id), user.Mail, Number(user.company_id));
+    const newRefreshToken = createRefreshToken();
+    await saveRefreshToken(Number(user.id), newRefreshToken);
+
+    // Yeni cookie'leri ayarla
+    res.cookie('accessToken', newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000 // 15 dakika
+    });
+
+    res.cookie('refreshToken', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 gün
+    });
+
+    res.status(200).json({
+      message: 'Token başarıyla yenilendi.',
+      user: {
+        id: Number(user.id),
+        Name: user.Name,
+        Mail: user.Mail,
+        company_id: Number(user.company_id),
+        company_name: user.company.Name,
+        is_SuperAdmin: user.is_SuperAdmin
+      }
+    });
+
+  } catch (error) {
+    console.error('Token yenileme hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
+const logoutUser = async (req, res) => {
+  try {
+    const { refreshToken } = req.cookies;
+    
+    // Eğer refresh token varsa, onu revoke et
+    if (refreshToken) {
+      const tokenRecord = await verifyRefreshToken(refreshToken);
+      if (tokenRecord) {
+        await revokeRefreshToken(tokenRecord.id);
+      }
+    }
+
+    // Cookie'leri temizle
+    res.clearCookie('accessToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
+
+    res.clearCookie('refreshToken', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict'
@@ -324,6 +426,7 @@ module.exports = {
   registerCompanyUser,
   confirmUser,
   loginUser,
+  refreshAccessToken,
   logoutUser,
   getUserProfile,
   getDashboardProfile,

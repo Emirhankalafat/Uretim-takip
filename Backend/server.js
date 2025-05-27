@@ -8,6 +8,7 @@ const userRoutes = require('./user/userRoutes');
 const categoryRoutes = require('./category/categoryRoutes');
 const productRoutes = require('./product/productRoutes');
 const productStepsRoutes = require('./product-steps/productStepsRoutes');
+const { startTokenCleanupScheduler } = require('./auth/utils/scheduler');
 require('dotenv').config();
 
 // CORS ayarları
@@ -26,6 +27,13 @@ app.use('/api/user', userRoutes); // /api/user altına yönlendir
 app.use('/api/categories', categoryRoutes); // /api/categories altına yönlendir
 app.use('/api/products', productRoutes); // /api/products altına yönlendir
 app.use('/api/product-steps', productStepsRoutes); // /api/product-steps altına yönlendir
+
+// Token yönetim scheduler'ını başlat
+// Sadece revoke et (önerilen)
+startTokenCleanupScheduler();
+
+// Alternatif: Eski token'ları da sil (30+ gün önceki revoke edilmiş token'lar)
+// startTokenCleanupScheduler({ deleteOldTokens: true, oldTokenDays: 30 });
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

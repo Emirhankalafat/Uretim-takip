@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux'
 import { Navigate } from 'react-router-dom'
 import userService from '../services/userService'
 import usePermissions from '../../../hooks/usePermissions'
+import api from '../../../services/api'
 
 const UserManagementPage = () => {
   const [users, setUsers] = useState([])
@@ -36,18 +37,8 @@ const UserManagementPage = () => {
 
   const fetchAvailablePermissions = async () => {
     try {
-      const response = await fetch('/api/permissions/permissions', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setAvailablePermissions(data.data || [])
-      }
+      const response = await api.get('/permissions/permissions')
+      setAvailablePermissions(response.data.data || [])
     } catch (error) {
       console.error('Yetkiler yüklenirken hata:', error)
     }
@@ -56,18 +47,8 @@ const UserManagementPage = () => {
   const fetchUserPermissions = async (userId) => {
     try {
       setPermissionLoading(true)
-      const response = await fetch(`/api/permissions/user/${userId}`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setUserPermissions(data.data.permissions || [])
-      }
+      const response = await api.get(`/permissions/user/${userId}`)
+      setUserPermissions(response.data.data.permissions || [])
     } catch (error) {
       console.error('Kullanıcı yetkileri yüklenirken hata:', error)
       setUserPermissions([])
@@ -78,49 +59,23 @@ const UserManagementPage = () => {
 
   const handleAddPermission = async (userId, permissionId) => {
     try {
-      const response = await fetch('/api/permissions/add-permission', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId, permissionId })
-      })
-      
-      if (response.ok) {
-        await fetchUserPermissions(userId)
-        await fetchUsers() // Kullanıcı listesini güncelle
-        setError(null)
-      } else {
-        const errorData = await response.json()
-        setError(errorData.message || 'Yetki eklenirken hata oluştu')
-      }
+      await api.post('/permissions/add-permission', { userId, permissionId })
+      await fetchUserPermissions(userId)
+      await fetchUsers() // Kullanıcı listesini güncelle
+      setError(null)
     } catch (error) {
-      setError('Yetki eklenirken hata oluştu')
+      setError(error.response?.data?.message || 'Yetki eklenirken hata oluştu')
     }
   }
 
   const handleRemovePermission = async (userId, permissionId) => {
     try {
-      const response = await fetch('/api/permissions/remove-permission', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId, permissionId })
-      })
-      
-      if (response.ok) {
-        await fetchUserPermissions(userId)
-        await fetchUsers() // Kullanıcı listesini güncelle
-        setError(null)
-      } else {
-        const errorData = await response.json()
-        setError(errorData.message || 'Yetki çıkarılırken hata oluştu')
-      }
+      await api.post('/permissions/remove-permission', { userId, permissionId })
+      await fetchUserPermissions(userId)
+      await fetchUsers() // Kullanıcı listesini güncelle
+      setError(null)
     } catch (error) {
-      setError('Yetki çıkarılırken hata oluştu')
+      setError(error.response?.data?.message || 'Yetki çıkarılırken hata oluştu')
     }
   }
 

@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function createConfirmToken(userId) {
@@ -59,9 +60,110 @@ async function createInviteToken(companyId, email) {
   return token;
 }
 
+// Refresh token oluşturma
+function createRefreshToken() {
+  return crypto.randomBytes(64).toString('hex');
+}
+
+// Refresh token'ı veritabanına kaydetme
+async function saveRefreshToken(userId, refreshToken) {
+  const tokenHash = await bcrypt.hash(refreshToken, 10);
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 gün
+  
+  return await prisma.refreshToken.create({
+    data: {
+      userId: BigInt(userId),
+      tokenHash,
+      expiresAt,
+    },
+  });
+}
+
+// Refresh token doğrulama
+async function verifyRefreshToken(refreshToken) {
+  try {
+    // Aktif refresh token'ları getir
+    const refreshTokens = await prisma.refreshToken.findMany({
+      where: {
+        revoked: false,
+        expiresAt: {
+          gt: new Date()
+        }
+      },
+      include: {
+        user: true
+      }
+    });
+
+    // Token'ı hash'lerle karşılaştır
+    for (const tokenRecord of refreshTokens) {
+      const isValid = await bcrypt.compare(refreshToken, tokenRecord.tokenHash);
+      if (isValid) {
+        return tokenRecord;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Refresh token doğrulama hatası:', error);
+    return null;
+  }
+}
+
+// Refresh token'ı revoke etme
+async function revokeRefreshToken(tokenId) {
+  return await prisma.refreshToken.update({
+    where: { id: BigInt(tokenId) },
+    data: { revoked: true }
+  });
+}
+
+// Kullanıcının tüm refresh token'larını revoke etme
+async function revokeAllUserRefreshTokens(userId) {
+  return await prisma.refreshToken.updateMany({
+    where: { 
+      userId: BigInt(userId),
+      revoked: false
+    },
+    data: { revoked: true }
+  });
+}
+
+// Süresi dolmuş token'ları revoke etme (silmek yerine)
+async function revokeExpiredTokens() {
+  return await prisma.refreshToken.updateMany({
+    where: {
+      expiresAt: { lt: new Date() },
+      revoked: false
+    },
+    data: {
+      revoked: true
+    }
+  });
+}
+
+// Çok eski revoke edilmiş token'ları fiziksel olarak sil (isteğe bağlı)
+async function deleteOldRevokedTokens(daysOld = 30) {
+  const cutoffDate = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000);
+  
+  return await prisma.refreshToken.deleteMany({
+    where: {
+      revoked: true,
+      createdAt: { lt: cutoffDate }
+    }
+  });
+}
+
 module.exports = { 
   createConfirmToken, 
   createJWTToken, 
   verifyJWTToken,
-  createInviteToken
+  createInviteToken,
+  createRefreshToken,
+  saveRefreshToken,
+  verifyRefreshToken,
+  revokeRefreshToken,
+  revokeAllUserRefreshTokens,
+  revokeExpiredTokens,
+  deleteOldRevokedTokens
 };

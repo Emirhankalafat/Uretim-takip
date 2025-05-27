@@ -38,6 +38,7 @@ model User {
 
   permissions  Users_Permissions[]
   confirmTokens ConfirmToken[]
+  refreshTokens RefreshToken[]
   responsibleSteps ProductSteps[]
 
   @@map("users")
@@ -74,6 +75,18 @@ model ConfirmToken {
   user      User     @relation(fields: [user_id], references: [id])
 
   @@map("confirm_tokens")
+}
+
+model RefreshToken {
+  id          BigInt   @id @default(autoincrement())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      BigInt
+  tokenHash   String
+  expiresAt   DateTime
+  revoked     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@map("refresh_tokens")
 }
 
 model Invite {

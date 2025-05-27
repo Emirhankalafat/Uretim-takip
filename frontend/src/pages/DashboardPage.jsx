@@ -1,6 +1,7 @@
 import { useSelector } from 'react-redux'
 import { useState, useEffect } from 'react'
 import userService from '../features/users/services/userService'
+import api from '../services/api'
 
 const DashboardPage = () => {
   const { user } = useSelector((state) => state.auth)
@@ -15,20 +16,8 @@ const DashboardPage = () => {
   const fetchDashboardProfile = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/auth/dashboard-profile', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setProfileData(data.profile)
-      } else {
-        console.error('Dashboard profil verileri alınamadı')
-      }
+      const response = await api.get('/auth/dashboard-profile')
+      setProfileData(response.data.profile)
     } catch (error) {
       console.error('Dashboard profil verileri alınamadı:', error)
     } finally {
