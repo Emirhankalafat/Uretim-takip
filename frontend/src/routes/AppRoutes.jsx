@@ -10,6 +10,8 @@ import UserManagementPage from '../features/users/pages/UserManagementPage'
 import UserInvitePage from '../features/users/pages/UserInvitePage'
 import CategoriesPage from '../features/categories/pages/CategoriesPage'
 import ProductsPage from '../features/products/pages/ProductsPage'
+import ProductStepsPage from '../features/product-steps/pages/ProductStepsPage'
+import ProductStepsTablePage from '../features/product-steps/pages/ProductStepsTablePage'
 import DashboardPage from '../pages/DashboardPage'
 import MainLayout from '../layouts/MainLayout'
 
@@ -173,6 +175,26 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <ProductsPage />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Product Steps Route */}
+      <Route 
+        path="/product-steps" 
+        element={
+          <ProtectedRoute>
+            <ProductStepsPage />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Product Steps Table Route */}
+      <Route 
+        path="/product-steps-table" 
+        element={
+          <ProtectedRoute>
+            <ProductStepsTablePage />
           </ProtectedRoute>
         } 
       />

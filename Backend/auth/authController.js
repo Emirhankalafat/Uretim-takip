@@ -185,8 +185,10 @@ const loginUser = async (req, res) => {
       message: 'Giriş başarılı.',
       user: {
         id: Number(user.id),
-        name: user.Name,
-        mail: user.Mail,
+        Name: user.Name,  // Frontend'de Name olarak bekleniyor
+        Mail: user.Mail,  // Frontend'de Mail olarak bekleniyor
+        name: user.Name,  // Backward compatibility için
+        mail: user.Mail,  // Backward compatibility için
         company_id: Number(user.company_id),
         company_name: user.company.Name,
         is_SuperAdmin: user.is_SuperAdmin

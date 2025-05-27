@@ -363,10 +363,48 @@ const getInvites = async (req, res) => {
   }
 };
 
+// Basit kullanıcı listesi (sadece id ve name) - Herhangi bir authenticated kullanıcı için
+const getSimpleCompanyUsers = async (req, res) => {
+  try {
+    const companyId = req.user.company_id;
+
+    const users = await prisma.user.findMany({
+      where: {
+        company_id: BigInt(companyId),
+        is_active: true,
+        is_confirm: true
+      },
+      select: {
+        id: true,
+        Name: true
+      },
+      orderBy: { Name: 'asc' }
+    });
+
+    // BigInt'leri Number'a çevir
+    const serializedUsers = users.map(user => ({
+      id: Number(user.id),
+      Name: user.Name
+    }));
+
+    res.status(200).json({
+      message: 'Basit kullanıcı listesi başarıyla getirildi.',
+      data: {
+        users: serializedUsers
+      }
+    });
+
+  } catch (error) {
+    console.error('Basit kullanıcı listesi hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
 module.exports = {
   inviteUser,
   acceptInvite,
   getInvites,
   checkInvite,
-  getCompanyUsers
+  getCompanyUsers,
+  getSimpleCompanyUsers
 }; 

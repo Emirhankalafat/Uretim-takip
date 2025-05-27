@@ -37,6 +37,12 @@ export const userService = {
     return response.data
   },
 
+  // Basit kullanıcı listesi (sadece id ve name)
+  getSimpleUsers: async () => {
+    const response = await api.get('/user/simple-users')
+    return response.data
+  },
+
   // Davetleri getir
   getInvites: async () => {
     const response = await api.get('/user/invites')

@@ -175,3 +175,8 @@
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* Custom scale for drag over effect */
+.scale-102 {
+  transform: scale(1.02);
+}

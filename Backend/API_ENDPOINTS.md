@@ -14,6 +14,12 @@
 - `PRODUCT_UPDATE` - Ürün güncelleme
 - `PRODUCT_DELETE` - Ürün silme
 
+### Ürün Adımları Permission'ları
+- `PRODUCT_STEP_CREATE` - Ürün adımı oluşturma
+- `PRODUCT_STEP_READ` - Ürün adımı görüntüleme
+- `PRODUCT_STEP_UPDATE` - Ürün adımı güncelleme
+- `PRODUCT_STEP_DELETE` - Ürün adımı silme
+
 ## Kategori Endpoint'leri
 
 ### 1. Kategorileri Listeleme
@@ -243,6 +249,233 @@ Permission: PRODUCT_UPDATE
 DELETE /api/products/:id
 Authorization: Bearer token gerekli
 Permission: PRODUCT_DELETE
+```
+
+## Ürün Adımları (Product Steps) Endpoint'leri
+
+### 1. Ürün Adımlarını Listeleme
+```
+GET /api/product-steps
+Authorization: Bearer token gerekli
+Permission: PRODUCT_STEP_READ
+
+Query Parameters:
+- product_id: Belirli ürünün adımlarını filtreleme
+- search: Adım adı veya açıklamasında arama
+```
+
+**Örnek:**
+```
+GET /api/product-steps?product_id=1&search=hazırlık
+```
+
+**Response:**
+```json
+{
+  "message": "Ürün adımları başarıyla getirildi.",
+  "productSteps": [
+    {
+      "id": "1",
+      "Name": "Malzeme Hazırlığı",
+      "Description": "Gerekli malzemelerin hazırlanması",
+      "Product_id": "1",
+      "Step_number": 1,
+      "Responsible_User": "2",
+      "created_at": "2025-05-27T00:00:00.000Z",
+      "updated_at": "2025-05-27T00:00:00.000Z",
+      "product": {
+        "id": "1",
+        "name": "Gaming Laptop"
+      },
+      "responsible": {
+        "id": "2",
+        "Name": "Ahmet Yılmaz",
+        "Mail": "ahmet@example.com"
+      }
+    }
+  ]
+}
+```
+
+### 2. Belirli Ürünün Adımlarını Getirme
+```
+GET /api/product-steps/product/:productId
+Authorization: Bearer token gerekli
+Permission: PRODUCT_STEP_READ
+```
+
+**Response:**
+```json
+{
+  "message": "Ürün adımları başarıyla getirildi.",
+  "product": {
+    "id": "1",
+    "name": "Gaming Laptop",
+    "description": "Yüksek performanslı laptop",
+    "Category_id": "1",
+    "Company_id": "1"
+  },
+  "productSteps": [
+    {
+      "id": "1",
+      "Name": "Malzeme Hazırlığı",
+      "Description": "Gerekli malzemelerin hazırlanması",
+      "Product_id": "1",
+      "Step_number": 1,
+      "Responsible_User": "2",
+      "created_at": "2025-05-27T00:00:00.000Z",
+      "updated_at": "2025-05-27T00:00:00.000Z",
+      "responsible": {
+        "id": "2",
+        "Name": "Ahmet Yılmaz",
+        "Mail": "ahmet@example.com"
+      }
+    }
+  ]
+}
+```
+
+### 3. Tek Adım Getirme
+```
+GET /api/product-steps/:id
+Authorization: Bearer token gerekli
+Permission: PRODUCT_STEP_READ
+```
+
+**Response:**
+```json
+{
+  "message": "Ürün adımı başarıyla getirildi.",
+  "productStep": {
+    "id": "1",
+    "Name": "Malzeme Hazırlığı",
+    "Description": "Gerekli malzemelerin hazırlanması",
+    "Product_id": "1",
+    "Step_number": 1,
+    "Responsible_User": "2",
+    "created_at": "2025-05-27T00:00:00.000Z",
+    "updated_at": "2025-05-27T00:00:00.000Z",
+    "product": {
+      "id": "1",
+      "name": "Gaming Laptop",
+      "Company_id": "1"
+    },
+    "responsible": {
+      "id": "2",
+      "Name": "Ahmet Yılmaz",
+      "Mail": "ahmet@example.com"
+    }
+  }
+}
+```
+
+### 4. Ürün Adımı Oluşturma
+```
+POST /api/product-steps
+Authorization: Bearer token gerekli
+Permission: PRODUCT_STEP_CREATE
+```
+
+**Request Body:**
+```json
+{
+  "Name": "Malzeme Hazırlığı",
+  "Description": "Gerekli malzemelerin hazırlanması", // Opsiyonel
+  "Product_id": "1", // Zorunlu
+  "Step_number": 1, // Zorunlu
+  "Responsible_User": "2" // Opsiyonel
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Ürün adımı başarıyla oluşturuldu.",
+  "productStep": {
+    "id": "1",
+    "Name": "Malzeme Hazırlığı",
+    "Description": "Gerekli malzemelerin hazırlanması",
+    "Product_id": "1",
+    "Step_number": 1,
+    "Responsible_User": "2",
+    "created_at": "2025-05-27T00:00:00.000Z",
+    "updated_at": "2025-05-27T00:00:00.000Z",
+    "product": {
+      "id": "1",
+      "name": "Gaming Laptop"
+    },
+    "responsible": {
+      "id": "2",
+      "Name": "Ahmet Yılmaz",
+      "Mail": "ahmet@example.com"
+    }
+  }
+}
+```
+
+### 5. Ürün Adımı Güncelleme
+```
+PUT /api/product-steps/:id
+Authorization: Bearer token gerekli
+Permission: PRODUCT_STEP_UPDATE
+```
+
+**Request Body:**
+```json
+{
+  "Name": "Güncellenmiş Malzeme Hazırlığı",
+  "Description": "Yeni açıklama",
+  "Step_number": 2,
+  "Responsible_User": "3"
+}
+```
+
+### 6. Ürün Adımı Silme
+```
+DELETE /api/product-steps/:id
+Authorization: Bearer token gerekli
+Permission: PRODUCT_STEP_DELETE
+```
+
+**Response:**
+```json
+{
+  "message": "Ürün adımı başarıyla silindi."
+}
+```
+
+### 7. Adım Sırasını Güncelleme (Bulk Update)
+```
+PUT /api/product-steps/product/:productId/reorder
+Authorization: Bearer token gerekli
+Permission: PRODUCT_STEP_UPDATE
+```
+
+**Request Body:**
+```json
+{
+  "steps": [
+    {
+      "id": "1",
+      "step_number": 2
+    },
+    {
+      "id": "2", 
+      "step_number": 1
+    },
+    {
+      "id": "3",
+      "step_number": 3
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Adım sıralaması başarıyla güncellendi."
+}
 ```
 
 ## Hata Kodları

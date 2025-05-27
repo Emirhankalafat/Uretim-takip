@@ -38,8 +38,10 @@ const authenticateToken = async (req, res, next) => {
     // Kullanıcı bilgilerini request'e ekle
     req.user = {
       id: Number(user.id),
-      mail: user.Mail,
-      name: user.Name,
+      Mail: user.Mail,  // Frontend'de Mail olarak bekleniyor
+      Name: user.Name,  // Frontend'de Name olarak bekleniyor
+      mail: user.Mail,  // Backward compatibility için
+      name: user.Name,  // Backward compatibility için
       company_id: Number(user.company_id),
       company_name: user.company.Name,
       is_SuperAdmin: user.is_SuperAdmin

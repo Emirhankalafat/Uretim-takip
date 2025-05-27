@@ -38,6 +38,7 @@ model User {
 
   permissions  Users_Permissions[]
   confirmTokens ConfirmToken[]
+  responsibleSteps ProductSteps[]
 
   @@map("users")
 }
@@ -110,6 +111,24 @@ model Products {
   
   category    Categories @relation(fields: [Category_id], references: [id])
   company     Company    @relation(fields: [Company_id], references: [id])
+  steps       ProductSteps[]
   
   @@map("products")
+}
+
+model ProductSteps {
+  id              BigInt   @id @default(autoincrement())
+  Name            String
+  Description     String?
+  Product_id      BigInt
+  Step_number     Int
+  Responsible_User BigInt?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  product         Products @relation(fields: [Product_id], references: [id], onDelete: Cascade)
+  responsible     User?    @relation(fields: [Responsible_User], references: [id])
+  
+  @@map("product_steps")
+  @@unique([Product_id, Step_number])
 }

@@ -44,6 +44,13 @@ const MainLayout = ({ children }) => {
       gradient: 'from-success-500 to-success-600'
     },
     { 
+      name: 'Ürün Adımları', 
+      href: '/product-steps', 
+      icon: '🔧', 
+      requirePermission: 'PRODUCT_STEP_READ',
+      gradient: 'from-info-500 to-info-600'
+    },
+    { 
       name: 'Yetkileri Yönet', 
       href: '/user-management', 
       icon: '👥', 
