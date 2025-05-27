@@ -12,6 +12,12 @@ const {
   revokeAllUserRefreshTokens
 } = require('./utils/tokenUtils');
 const { sendConfirmEmail } = require('./utils/emailUtils');
+const { 
+  createCsrfToken, 
+  deleteCsrfToken, 
+  getCsrfToken,
+  updateCsrfTokenTTL 
+} = require('./utils/csrfUtils');
 
 const registerCompanyUser = async (req, res) => {
   try {
@@ -185,6 +191,9 @@ const loginUser = async (req, res) => {
     const refreshToken = createRefreshToken();
     await saveRefreshToken(Number(user.id), refreshToken);
 
+    // CSRF token oluştur (session süresi ile aynı - 1 gün)
+    const csrfToken = await createCsrfToken(Number(user.id), 24 * 60 * 60); // 1 gün
+
     // Cookie'lere token'ları kaydet
     res.cookie('accessToken', accessToken, {
       httpOnly: true, // XSS saldırılarına karşı koruma
@@ -200,6 +209,14 @@ const loginUser = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 gün (milisaniye cinsinden)
     });
 
+    // CSRF token'ı da cookie olarak gönder (JavaScript'ten erişilebilir)
+    res.cookie('csrfToken', csrfToken, {
+      httpOnly: false, // JavaScript'ten erişilebilir olmalı
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000 // 1 gün (milisaniye cinsinden)
+    });
+
     res.status(200).json({
       message: 'Giriş başarılı.',
       user: {
@@ -211,7 +228,8 @@ const loginUser = async (req, res) => {
         company_id: Number(user.company_id),
         company_name: user.company.Name,
         is_SuperAdmin: user.is_SuperAdmin
-      }
+      },
+      csrfToken: csrfToken // CSRF token'ı frontend'e gönder
     });
 
   } catch (error) {
@@ -254,6 +272,9 @@ const refreshAccessToken = async (req, res) => {
     const newRefreshToken = createRefreshToken();
     await saveRefreshToken(Number(user.id), newRefreshToken);
 
+    // CSRF token'ın TTL'ini güncelle (session yenilendiği için)
+    await updateCsrfTokenTTL(Number(user.id), 24 * 60 * 60); // 1 gün
+
     // Yeni cookie'leri ayarla
     res.cookie('accessToken', newAccessToken, {
       httpOnly: true,
@@ -269,6 +290,19 @@ const refreshAccessToken = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 gün
     });
 
+    // Güncel CSRF token'ı al ve frontend'e gönder
+    const currentCsrfToken = await getCsrfToken(Number(user.id));
+
+    // CSRF token'ı cookie olarak da gönder
+    if (currentCsrfToken) {
+      res.cookie('csrfToken', currentCsrfToken, {
+        httpOnly: false, // JavaScript'ten erişilebilir olmalı
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000 // 1 gün (milisaniye cinsinden)
+      });
+    }
+
     res.status(200).json({
       message: 'Token başarıyla yenilendi.',
       user: {
@@ -278,7 +312,8 @@ const refreshAccessToken = async (req, res) => {
         company_id: Number(user.company_id),
         company_name: user.company.Name,
         is_SuperAdmin: user.is_SuperAdmin
-      }
+      },
+      csrfToken: currentCsrfToken // CSRF token'ı frontend'e gönder
     });
 
   } catch (error) {
@@ -290,13 +325,25 @@ const refreshAccessToken = async (req, res) => {
 const logoutUser = async (req, res) => {
   try {
     const { refreshToken } = req.cookies;
+    let userId = null;
     
-    // Eğer refresh token varsa, onu revoke et
+    // Eğer refresh token varsa, onu revoke et ve user ID'yi al
     if (refreshToken) {
       const tokenRecord = await verifyRefreshToken(refreshToken);
       if (tokenRecord) {
+        userId = Number(tokenRecord.userId);
         await revokeRefreshToken(tokenRecord.id);
       }
+    }
+
+    // Eğer auth middleware'den user bilgisi varsa onu kullan
+    if (req.user && req.user.id) {
+      userId = req.user.id;
+    }
+
+    // CSRF token'ı sil
+    if (userId) {
+      await deleteCsrfToken(userId);
     }
 
     // Cookie'leri temizle
@@ -308,6 +355,13 @@ const logoutUser = async (req, res) => {
 
     res.clearCookie('refreshToken', {
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
+
+    // CSRF token cookie'sini de temizle
+    res.clearCookie('csrfToken', {
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict'
     });
@@ -422,6 +476,56 @@ const getDashboardProfile = async (req, res) => {
   }
 };
 
+// CSRF token alma endpoint'i
+const getCsrfTokenEndpoint = async (req, res) => {
+  try {
+    // Kullanıcı bilgisi var mı kontrol et (auth middleware'den sonra çalışmalı)
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ 
+        message: 'Kullanıcı bilgisi bulunamadı. Lütfen giriş yapın.' 
+      });
+    }
+
+    // Mevcut CSRF token'ı al
+    const csrfToken = await getCsrfToken(req.user.id);
+
+    if (!csrfToken) {
+      // CSRF token yoksa yeni oluştur
+      const newCsrfToken = await createCsrfToken(req.user.id, 24 * 60 * 60); // 1 gün
+      
+      // Cookie olarak da gönder
+      res.cookie('csrfToken', newCsrfToken, {
+        httpOnly: false, // JavaScript'ten erişilebilir olmalı
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000 // 1 gün (milisaniye cinsinden)
+      });
+      
+      return res.status(200).json({
+        message: 'CSRF token oluşturuldu.',
+        csrfToken: newCsrfToken
+      });
+    }
+
+    // Mevcut token'ı cookie olarak da gönder
+    res.cookie('csrfToken', csrfToken, {
+      httpOnly: false, // JavaScript'ten erişilebilir olmalı
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000 // 1 gün (milisaniye cinsinden)
+    });
+
+    res.status(200).json({
+      message: 'CSRF token başarıyla alındı.',
+      csrfToken: csrfToken
+    });
+
+  } catch (error) {
+    console.error('CSRF token alma hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
 module.exports = {
   registerCompanyUser,
   confirmUser,
@@ -430,4 +534,5 @@ module.exports = {
   logoutUser,
   getUserProfile,
   getDashboardProfile,
+  getCsrfTokenEndpoint,
 };

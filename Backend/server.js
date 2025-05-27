@@ -9,6 +9,9 @@ const categoryRoutes = require('./category/categoryRoutes');
 const productRoutes = require('./product/productRoutes');
 const productStepsRoutes = require('./product-steps/productStepsRoutes');
 const { startTokenCleanupScheduler } = require('./auth/utils/scheduler');
+const { authenticateToken } = require('./auth/middleware/authMiddleware');
+const { csrfProtection } = require('./auth/middleware/csrfMiddleware');
+const { connectRedis } = require('./config/redis');
 require('dotenv').config();
 
 // CORS ayarları
@@ -16,17 +19,21 @@ app.use(cors({
   origin: 'http://localhost:5173', // React app URL'i (Vite default port)
   credentials: true, // Cookie'leri kabul et
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'CSRF-Token']
 }));
 
 app.use(express.json()); // JSON body parse
 app.use(cookieParser()); // Cookie parse
-app.use('/api/auth', authRoutes); // /api/auth altına yönlendir
-app.use('/api/permissions', permissionRoutes); // /api/permissions altına yönlendir
-app.use('/api/user', userRoutes); // /api/user altına yönlendir
-app.use('/api/categories', categoryRoutes); // /api/categories altına yönlendir
-app.use('/api/products', productRoutes); // /api/products altına yönlendir
-app.use('/api/product-steps', productStepsRoutes); // /api/product-steps altına yönlendir
+
+// Auth routes (CSRF koruması yok)
+app.use('/api/auth', authRoutes);
+
+// Diğer tüm route'lar için auth + CSRF koruması
+app.use('/api/permissions', authenticateToken, csrfProtection, permissionRoutes);
+app.use('/api/user', authenticateToken, csrfProtection, userRoutes);
+app.use('/api/categories', authenticateToken, csrfProtection, categoryRoutes);
+app.use('/api/products', authenticateToken, csrfProtection, productRoutes);
+app.use('/api/product-steps', authenticateToken, csrfProtection, productStepsRoutes);
 
 // Token yönetim scheduler'ını başlat
 // Sadece revoke et (önerilen)
@@ -36,6 +43,22 @@ startTokenCleanupScheduler();
 // startTokenCleanupScheduler({ deleteOldTokens: true, oldTokenDays: 30 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server ${PORT} portunda çalışıyor.`);
-});
+
+// Redis bağlantısını başlat
+async function startServer() {
+  try {
+    // Redis bağlantısını başlat
+    await connectRedis();
+    
+    // Server'ı başlat
+    app.listen(PORT, () => {
+      console.log(`🚀 Server ${PORT} portunda çalışıyor.`);
+      console.log(`🌐 CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
+    });
+  } catch (error) {
+    console.error('❌ Server başlatma hatası:', error);
+    process.exit(1);
+  }
+}
+
+startServer();

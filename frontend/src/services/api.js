@@ -1,4 +1,5 @@
 import axios from 'axios'
+import csrfTokenManager from '../utils/csrfToken'
 
 const API_BASE_URL = 'http://localhost:3001/api'
 
@@ -18,10 +19,29 @@ export const setApiStore = (storeInstance) => {
   store = storeInstance
 }
 
-// Request interceptor - Cookie kullandığımız için token header'ına gerek yok
+// CSRF token almak için fonksiyon
+export const fetchCsrfToken = async () => {
+  try {
+    const response = await api.get('/auth/csrf-token')
+    const token = response.data.csrfToken
+    csrfTokenManager.setToken(token)
+    return token
+  } catch (error) {
+    console.error('CSRF token alma hatası:', error)
+    return null
+  }
+}
+
+// Request interceptor - CSRF token'ı header'a ekle
 api.interceptors.request.use(
   (config) => {
-    // Cookie otomatik olarak gönderilecek
+    // POST, PUT, DELETE request'lerde CSRF token ekle
+    const needsCsrfToken = ['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase())
+    
+    if (needsCsrfToken && csrfTokenManager.hasToken()) {
+      config.headers['X-CSRF-Token'] = csrfTokenManager.getToken()
+    }
+    
     return config
   },
   (error) => {
@@ -45,11 +65,31 @@ const processQueue = (error, token = null) => {
   failedQueue = []
 }
 
-// Response interceptor - Refresh token sistemi ile
+// Response interceptor - Refresh token sistemi ve CSRF token güncelleme
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Response'dan yeni CSRF token'ı al ve güncelle
+    csrfTokenManager.updateFromResponse(response);
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config
+
+    // 403 hatası CSRF token sorunu olabilir
+    if (error.response?.status === 403 && error.response?.data?.message?.includes('CSRF')) {
+      console.log('🔒 CSRF token hatası, yeni token alınıyor...');
+      
+      try {
+        // Yeni CSRF token al
+        await fetchCsrfToken();
+        
+        // Orijinal isteği tekrar dene
+        return api(originalRequest);
+      } catch (csrfError) {
+        console.error('CSRF token yenileme hatası:', csrfError);
+        return Promise.reject(error);
+      }
+    }
 
     // 401 hatası ve henüz refresh token denenmemişse
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -58,6 +98,7 @@ api.interceptors.response.use(
         if (store) {
           store.dispatch({ type: 'auth/logout' })
         }
+        csrfTokenManager.clearToken(); // CSRF token'ı da temizle
         redirectToLogin()
         return Promise.reject(error)
       }
@@ -78,7 +119,12 @@ api.interceptors.response.use(
 
       try {
         // Refresh token isteği
-        await api.post('/auth/refresh-token')
+        const refreshResponse = await api.post('/auth/refresh-token')
+        
+        // Refresh response'dan CSRF token'ı al
+        if (refreshResponse.data.csrfToken) {
+          csrfTokenManager.setToken(refreshResponse.data.csrfToken);
+        }
         
         isRefreshingToken = false
         processQueue(null)
@@ -93,6 +139,7 @@ api.interceptors.response.use(
         if (store) {
           store.dispatch({ type: 'auth/logout' })
         }
+        csrfTokenManager.clearToken(); // CSRF token'ı da temizle
         redirectToLogin()
         
         return Promise.reject(refreshError)

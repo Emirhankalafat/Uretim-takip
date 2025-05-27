@@ -1,19 +1,39 @@
 import api from '../../../services/api'
+import csrfTokenManager from '../../../utils/csrfToken'
 
 export const authService = {
   // App başlangıcında kullanıcının giriş durumunu kontrol et
   initialize: async () => {
     try {
       const response = await api.get('/auth/profile')
+      
+      // Eğer kullanıcı giriş yapmışsa CSRF token al
+      if (response.data.user && !csrfTokenManager.hasToken()) {
+        await api.get('/auth/csrf-token').then(csrfResponse => {
+          if (csrfResponse.data.csrfToken) {
+            csrfTokenManager.setToken(csrfResponse.data.csrfToken);
+          }
+        }).catch(error => {
+          console.warn('CSRF token alınamadı:', error);
+        });
+      }
+      
       return response.data
     } catch (error) {
       // Cookie geçersiz veya yok
+      csrfTokenManager.clearToken();
       return null
     }
   },
 
   login: async (credentials) => {
     const response = await api.post('/auth/login', credentials)
+    
+    // Login response'dan CSRF token'ı al
+    if (response.data.csrfToken) {
+      csrfTokenManager.setToken(response.data.csrfToken);
+    }
+    
     return response.data
   },
 
@@ -29,6 +49,10 @@ export const authService = {
 
   logout: async () => {
     const response = await api.post('/auth/logout')
+    
+    // Logout sonrası CSRF token'ı temizle
+    csrfTokenManager.clearToken();
+    
     return response.data
   },
 
@@ -52,6 +76,15 @@ export const authService = {
   // Daveti kabul et
   acceptInvite: async (data) => {
     const response = await api.post('/user/accept-invite', data)
+    return response.data
+  },
+
+  // CSRF token al
+  getCsrfToken: async () => {
+    const response = await api.get('/auth/csrf-token')
+    if (response.data.csrfToken) {
+      csrfTokenManager.setToken(response.data.csrfToken);
+    }
     return response.data
   },
 }
