@@ -31,6 +31,10 @@ const ProductStepsTablePage = () => {
   const canDelete = user?.is_SuperAdmin || hasPermission('PRODUCT_STEP_DELETE')
   const canReadProducts = user?.is_SuperAdmin || hasPermission('PRODUCT_READ')
 
+  // Ürün adımlarına erişim için hem step yetkisi hem de ürün okuma yetkisi zorunlu
+  const hasStepPermission = canRead || canCreate || canUpdate || canDelete;
+  const hasFullAccess = hasStepPermission && canReadProducts;
+
   useEffect(() => {
     if (canReadProducts) {
       fetchProducts()
@@ -354,23 +358,68 @@ const ProductStepsTablePage = () => {
     }
   }
 
-  if (!canRead) {
+  if (!hasFullAccess) {
     return (
-      <div className="animate-fade-in">
-        <div className="bg-gradient-to-r from-danger-50 to-danger-100 border border-danger-200 rounded-xl p-6 shadow-soft">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-10 h-10 bg-gradient-to-r from-danger-500 to-danger-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-lg">⚠️</span>
+      <div className="animate-fade-in min-h-screen bg-blue-50 flex items-center justify-center p-6">
+        <div className="max-w-2xl w-full">
+          <div className="bg-white rounded-2xl shadow-strong border border-blue-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-8 py-6 text-white">
+              <div className="flex items-center">
+                <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-4">
+                  <span className="text-3xl">ℹ️</span>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold mb-1">Yetki Gerekli</h1>
+                  <p className="text-blue-100">Ürün Adımları - Tablo Yönetimi</p>
+                </div>
               </div>
             </div>
-            <div className="ml-4">
-              <h3 className="text-lg font-semibold text-danger-800">
-                Erişim Reddedildi
-              </h3>
-              <p className="mt-1 text-sm text-danger-700">
-                Bu sayfayı görüntülemek için gerekli yetkiniz bulunmamaktadır.
-              </p>
+            <div className="p-8">
+              <div className="text-center mb-8">
+                <h2 className="text-xl font-semibold text-gray-900 mb-3">
+                  Bu sayfaya erişmek için gerekli yetkilere sahip değilsiniz.
+                </h2>
+                <p className="text-gray-600 leading-relaxed">
+                  Lütfen yöneticinizle iletişime geçin ve aşağıdaki yetkileri talep edin:
+                </p>
+              </div>
+              <div className="bg-blue-50 rounded-xl p-6 mb-8 border border-blue-100">
+                <h3 className="font-semibold text-blue-900 mb-4 flex items-center">
+                  <span className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm mr-2">✓</span>
+                  Gerekli Yetkiler
+                </h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="flex items-center p-3 bg-white rounded-lg border border-blue-100">
+                    <span className="text-2xl mr-3">👁️</span>
+                    <div>
+                      <div className="font-medium text-blue-900">PRODUCT_STEP_READ / CREATE / UPDATE / DELETE</div>
+                      <div className="text-sm text-blue-700">Ürün adımlarını yönetme yetkilerinden en az biri</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center p-3 bg-white rounded-lg border border-blue-100">
+                    <span className="text-2xl mr-3">📦</span>
+                    <div>
+                      <div className="font-medium text-blue-900">PRODUCT_READ</div>
+                      <div className="text-sm text-blue-700">Ürünleri görüntüleme yetkisi</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-blue-100 border border-blue-200 rounded-xl p-6 mb-8">
+                <div className="flex items-start">
+                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white text-xl mr-4 flex-shrink-0">
+                    👤
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-blue-900 mb-2">
+                      Yöneticiyle İletişime Geçin
+                    </h3>
+                    <p className="text-blue-800 mb-4 leading-relaxed">
+                      Gerekli yetkileri almak için sistem yöneticinizle iletişime geçebilirsiniz.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

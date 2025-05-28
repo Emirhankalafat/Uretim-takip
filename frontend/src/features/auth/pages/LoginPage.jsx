@@ -175,7 +175,7 @@ const LoginPage = () => {
               </button>
             </div>
 
-            <div className="text-center">
+            <div className="text-center space-y-3">
               <p className="text-blue-200">
                 Hesabınız yok mu?{' '}
                 <Link
@@ -185,6 +185,18 @@ const LoginPage = () => {
                   Hemen kayıt olun
                 </Link>
               </p>
+              
+              <div className="pt-2">
+                <Link
+                  to="/"
+                  className="inline-flex items-center text-sm text-blue-300 hover:text-white transition-colors duration-200"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Anasayfaya Dön
+                </Link>
+              </div>
             </div>
           </form>
         </div>

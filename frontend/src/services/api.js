@@ -38,7 +38,14 @@ api.interceptors.request.use(
     // POST, PUT, DELETE request'lerde CSRF token ekle
     const needsCsrfToken = ['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase())
     
-    if (needsCsrfToken && csrfTokenManager.hasToken()) {
+    // Auth endpoint'leri CSRF token'dan muaf
+    const isAuthEndpoint = config.url?.includes('/auth/login') || 
+                          config.url?.includes('/auth/register') ||
+                          config.url?.includes('/auth/refresh-token') ||
+                          config.url?.includes('/auth/logout') ||
+                          config.url?.includes('/auth/confirm')
+    
+    if (needsCsrfToken && !isAuthEndpoint && csrfTokenManager.hasToken()) {
       config.headers['X-CSRF-Token'] = csrfTokenManager.getToken()
     }
     
@@ -93,6 +100,16 @@ api.interceptors.response.use(
 
     // 401 hatası ve henüz refresh token denenmemişse
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // Login endpoint'inde 401 hatası varsa refresh token deneme (yanlış şifre vs.)
+      if (originalRequest.url?.includes('/auth/login')) {
+        return Promise.reject(error)
+      }
+
+      // Register endpoint'inde 401 hatası varsa refresh token deneme
+      if (originalRequest.url?.includes('/auth/register')) {
+        return Promise.reject(error)
+      }
+
       // Eğer refresh token endpoint'inde hata varsa direkt logout yap
       if (originalRequest.url?.includes('/refresh-token')) {
         if (store) {

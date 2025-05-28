@@ -30,12 +30,17 @@ const DashboardPage = () => {
     if (profileData?.company_stats?.subscription_end) {
       const currentDate = new Date()
       const endDate = new Date(profileData.company_stats.subscription_end)
-      const remainingDays = Math.max(0, Math.ceil((endDate - currentDate) / (24 * 60 * 60 * 1000)))
+      
+      // Zaman farkını hesapla (milisaniye cinsinden)
+      const timeDiff = endDate.getTime() - currentDate.getTime()
+      
+      // Gün cinsine çevir ve yukarı yuvarla
+      const remainingDays = Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)))
       
       return {
         remainingDays,
         isExpired: remainingDays === 0,
-        totalDays: 30, // Default trial duration
+        totalDays: 14, // Trial süresi 14 gün
         package: profileData.company_stats.subscription_package
       }
     }
@@ -43,7 +48,7 @@ const DashboardPage = () => {
     return {
       remainingDays: 0,
       isExpired: true,
-      totalDays: 30,
+      totalDays: 14,
       package: 'trial'
     }
   }

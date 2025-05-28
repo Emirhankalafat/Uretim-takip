@@ -13,6 +13,7 @@ import ProductsPage from '../features/products/pages/ProductsPage'
 import ProductStepsPage from '../features/product-steps/pages/ProductStepsPage'
 import ProductStepsTablePage from '../features/product-steps/pages/ProductStepsTablePage'
 import DashboardPage from '../pages/DashboardPage'
+import HomePage from '../pages/HomePage'
 import MainLayout from '../layouts/MainLayout'
 
 // Protected Route Component
@@ -74,6 +75,31 @@ const PublicRoute = ({ children }) => {
   }
   
   return children
+}
+
+// Home Route Component (smart routing based on auth status)
+const HomeRoute = () => {
+  const { isAuthenticated, initialized } = useSelector((state) => state.auth)
+  
+  // Henüz initialize edilmediyse bekle
+  if (!initialized) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Yükleniyor...</p>
+        </div>
+      </div>
+    )
+  }
+  
+  // Giriş yapmışsa dashboard'a yönlendir
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />
+  }
+  
+  // Giriş yapmamışsa anasayfayı göster
+  return <HomePage />
 }
 
 const AppRoutes = () => {
@@ -199,8 +225,13 @@ const AppRoutes = () => {
         } 
       />
       
-      {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      {/* Home Route */}
+      <Route 
+        path="/" 
+        element={
+          <HomeRoute />
+        } 
+      />
       
       {/* 404 Route */}
       <Route 
@@ -211,7 +242,7 @@ const AppRoutes = () => {
               <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
               <p className="text-gray-600 mb-4">Sayfa bulunamadı</p>
               <a 
-                href="/dashboard" 
+                href="/" 
                 className="text-primary-600 hover:text-primary-500"
               >
                 Ana sayfaya dön

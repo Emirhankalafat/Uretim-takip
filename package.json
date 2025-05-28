@@ -1,0 +1,34 @@
+{
+  "name": "uretim-takip-sistemi",
+  "version": "1.0.0",
+  "description": "Şirketler için kullanıcı yönetimi ve yetkilendirme sistemi içeren bir üretim takip sistemi",
+  "main": "build-and-start.js",
+  "scripts": {
+    "install:all": "npm install --prefix frontend && npm install --prefix Backend",
+    "build": "npm run build --prefix frontend",
+    "start:prod": "node build-and-start.js",
+    "start:dev:frontend": "npm run dev --prefix frontend",
+    "start:dev:backend": "npm run dev --prefix Backend",
+    "start:dev": "concurrently \"npm run start:dev:backend\" \"npm run start:dev:frontend\"",
+    "build:prod": "npm run build && set NODE_ENV=production && npm run start --prefix Backend"
+  },
+  "keywords": [
+    "production",
+    "tracking",
+    "user-management",
+    "authentication",
+    "react",
+    "nodejs",
+    "express",
+    "postgresql"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+} 
