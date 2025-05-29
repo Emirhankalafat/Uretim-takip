@@ -46,7 +46,13 @@ api.interceptors.request.use(
                           config.url?.includes('/auth/confirm')
     
     if (needsCsrfToken && !isAuthEndpoint && csrfTokenManager.hasToken()) {
-      config.headers['X-CSRF-Token'] = csrfTokenManager.getToken()
+      const token = csrfTokenManager.getToken()
+      config.headers['X-CSRF-Token'] = token
+      
+      // Development mode debug logs
+      if (import.meta.env.DEV) {
+        console.log(`🔍 Frontend: Sending CSRF token for ${config.method?.toUpperCase()} ${config.url}: ${token ? token.substring(0, 16) + '...' : 'NULL'}`)
+      }
     }
     
     return config
@@ -76,7 +82,13 @@ const processQueue = (error, token = null) => {
 api.interceptors.response.use(
   (response) => {
     // Response'dan yeni CSRF token'ı al ve güncelle
-    csrfTokenManager.updateFromResponse(response);
+    const newToken = csrfTokenManager.updateFromResponse(response);
+    
+    // Development mode debug logs
+    if (import.meta.env.DEV && newToken) {
+      console.log(`🔍 Frontend: New CSRF token received: ${newToken.substring(0, 16)}...`)
+    }
+    
     return response;
   },
   async (error) => {
@@ -84,7 +96,14 @@ api.interceptors.response.use(
 
     // 403 hatası CSRF token sorunu olabilir
     if (error.response?.status === 403 && error.response?.data?.message?.includes('CSRF')) {
-      console.log('🔒 CSRF token hatası, yeni token alınıyor...');
+      // Development mode debug logs
+      if (import.meta.env.DEV) {
+        console.log('🔒 CSRF token hatası, yeni token alınıyor...');
+        console.log(`🔍 Failed request: ${originalRequest.method?.toUpperCase()} ${originalRequest.url}`);
+        console.log(`🔍 Error message: ${error.response?.data?.message}`);
+      } else {
+        console.log('🔒 CSRF token hatası, yeni token alınıyor...');
+      }
       
       try {
         // Yeni CSRF token al

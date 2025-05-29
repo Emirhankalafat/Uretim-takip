@@ -171,6 +171,7 @@ model Orders {
   priority      Priority    @default(NORMAL)
   deadline      DateTime?
   notes         String?
+  is_stock      Boolean     @default(false)
   created_at    DateTime    @default(now())
   updated_at    DateTime    @updatedAt
   

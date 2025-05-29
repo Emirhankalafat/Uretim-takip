@@ -49,11 +49,91 @@ const createCustomer = async (req, res) => {
 const getCustomers = async (req, res) => {
   try {
     const company_id = req.user.company_id;
+    const user_id = req.user.id;
+    const is_SuperAdmin = req.user.is_SuperAdmin;
     const { search } = req.query;
 
     let whereClause = {
       Company_Id: BigInt(company_id)
     };
+
+    // SuperAdmin değilse, yetki kontrolü yap
+    if (!is_SuperAdmin) {
+      // Kullanıcının CUSTOMER_READ yetkisi var mı kontrol et
+      const customerReadPermission = await prisma.users_Permissions.findFirst({
+        where: {
+          User_id: BigInt(user_id),
+          permission: {
+            Name: 'CUSTOMER_READ'
+          }
+        }
+      });
+
+      // CUSTOMER_READ yetkisi varsa tüm müşterileri görebilir
+      if (!customerReadPermission) {
+        // CUSTOMER_READ yetkisi yoksa ORDER_READ yetkisini kontrol et
+        const orderReadPermission = await prisma.users_Permissions.findFirst({
+          where: {
+            User_id: BigInt(user_id),
+            permission: {
+              Name: 'ORDER_READ'
+            }
+          }
+        });
+
+        if (orderReadPermission) {
+          // ORDER_READ yetkisi varsa, siparişi olan tüm müşterileri görebilir
+          const ordersCustomerIds = await prisma.orders.findMany({
+            where: {
+              Company_id: BigInt(company_id)
+            },
+            select: {
+              Customer_id: true
+            }
+          });
+
+          const customerIds = [...new Set(ordersCustomerIds.map(order => order.Customer_id))];
+          
+          if (customerIds.length === 0) {
+            return res.json({
+              message: 'Henüz sipariş bulunmuyor.',
+              customers: []
+            });
+          }
+
+          whereClause.id = {
+            in: customerIds
+          };
+        } else {
+          // ORDER_READ yetkisi de yoksa, sadece atandığı adımlardaki müşterileri görebilir
+          const assignedOrderSteps = await prisma.orderSteps.findMany({
+            where: {
+              assigned_user: BigInt(user_id)
+            },
+            include: {
+              order: {
+                select: {
+                  Customer_id: true
+                }
+              }
+            }
+          });
+
+          const customerIds = [...new Set(assignedOrderSteps.map(step => step.order.Customer_id))];
+          
+          if (customerIds.length === 0) {
+            return res.json({
+              message: 'Size atanmış sipariş adımı bulunmuyor.',
+              customers: []
+            });
+          }
+
+          whereClause.id = {
+            in: customerIds
+          };
+        }
+      }
+    }
 
     // Arama filtresi
     if (search) {
@@ -91,7 +171,10 @@ const getCustomerById = async (req, res) => {
   try {
     const { id } = req.params;
     const company_id = req.user.company_id;
+    const user_id = req.user.id;
+    const is_SuperAdmin = req.user.is_SuperAdmin;
 
+    // Önce müşterinin varlığını ve şirket kontrolünü yap
     const customer = await prisma.customers.findFirst({
       where: {
         id: BigInt(id),
@@ -101,6 +184,64 @@ const getCustomerById = async (req, res) => {
 
     if (!customer) {
       return res.status(404).json({ message: 'Müşteri bulunamadı.' });
+    }
+
+    // SuperAdmin değilse, bu müşteriyi görebilir mi kontrol et
+    if (!is_SuperAdmin) {
+      // Kullanıcının CUSTOMER_READ yetkisi var mı kontrol et
+      const customerReadPermission = await prisma.users_Permissions.findFirst({
+        where: {
+          User_id: BigInt(user_id),
+          permission: {
+            Name: 'CUSTOMER_READ'
+          }
+        }
+      });
+
+      // CUSTOMER_READ yetkisi varsa bu müşteriyi görebilir
+      if (!customerReadPermission) {
+        // CUSTOMER_READ yetkisi yoksa ORDER_READ yetkisini kontrol et
+        const orderReadPermission = await prisma.users_Permissions.findFirst({
+          where: {
+            User_id: BigInt(user_id),
+            permission: {
+              Name: 'ORDER_READ'
+            }
+          }
+        });
+
+        if (orderReadPermission) {
+          // ORDER_READ yetkisi varsa ve bu müşterinin siparişi varsa görebilir
+          const customerOrder = await prisma.orders.findFirst({
+            where: {
+              Customer_id: BigInt(id),
+              Company_id: BigInt(company_id)
+            }
+          });
+
+          if (!customerOrder) {
+            return res.status(403).json({ 
+              message: 'Bu müşteriyi görme yetkiniz bulunmuyor.' 
+            });
+          }
+        } else {
+          // ORDER_READ yetkisi de yoksa, sadece atandığı adımlardaki müşterileri görebilir
+          const assignedOrderStep = await prisma.orderSteps.findFirst({
+            where: {
+              assigned_user: BigInt(user_id),
+              order: {
+                Customer_id: BigInt(id)
+              }
+            }
+          });
+
+          if (!assignedOrderStep) {
+            return res.status(403).json({ 
+              message: 'Bu müşteriyi görme yetkiniz bulunmuyor.' 
+            });
+          }
+        }
+      }
     }
 
     const formattedCustomer = {

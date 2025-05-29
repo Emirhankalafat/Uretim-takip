@@ -1,4 +1,4 @@
-const { verifyCsrfToken, refreshCsrfToken } = require('../utils/csrfUtils');
+const { verifyCsrfToken, refreshCsrfToken, getCsrfToken } = require('../utils/csrfUtils');
 
 /**
  * CSRF token doğrulama middleware'i
@@ -47,6 +47,12 @@ const csrfProtection = (req, res, next) => {
   // CSRF token'ı header'dan al
   const csrfToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];
 
+  // Development mode debug logs
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`🔍 CSRF Debug - User: ${req.user.id}, Path: ${req.path}, Method: ${req.method}`);
+    console.log(`🔍 Token from header: ${csrfToken ? csrfToken.substring(0, 16) + '...' : 'NULL'}`);
+  }
+
   if (!csrfToken) {
     return res.status(403).json({ 
       message: 'CSRF token bulunamadı. Lütfen sayfayı yenileyin.' 
@@ -56,6 +62,19 @@ const csrfProtection = (req, res, next) => {
   // CSRF token'ı doğrula
   verifyCsrfToken(req.user.id, csrfToken)
     .then(async (isValid) => {
+      // Development mode debug logs
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`🔍 Token validation result: ${isValid}`);
+        
+        if (!isValid) {
+          // Redis'teki token'ı da kontrol edelim
+          const storedToken = await getCsrfToken(req.user.id);
+          console.log(`🔍 Stored token in Redis: ${storedToken ? storedToken.substring(0, 16) + '...' : 'NULL'}`);
+          console.log(`🔍 Sent token: ${csrfToken.substring(0, 16)}...`);
+          console.log(`🔍 Tokens match: ${storedToken === csrfToken}`);
+        }
+      }
+      
       if (!isValid) {
         return res.status(403).json({ 
           message: 'Geçersiz CSRF token. Lütfen sayfayı yenileyin.' 
@@ -66,6 +85,11 @@ const csrfProtection = (req, res, next) => {
       try {
         const newCsrfToken = await refreshCsrfToken(req.user.id);
         res.setHeader('X-New-CSRF-Token', newCsrfToken);
+        
+        // Development mode debug logs
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`🔍 New CSRF token generated: ${newCsrfToken.substring(0, 16)}...`);
+        }
         
         // Request'e yeni token'ı ekle (isteğe bağlı)
         req.newCsrfToken = newCsrfToken;

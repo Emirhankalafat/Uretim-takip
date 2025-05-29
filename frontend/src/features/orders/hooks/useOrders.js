@@ -21,6 +21,25 @@ export const useOrders = () => {
   const canUpdate = checkPermission('ORDER_UPDATE')
   const canDelete = checkPermission('ORDER_DELETE')
 
+  // Sipariş oluşturma için gerekli yetkileri kontrol et
+  const checkOrderCreationPermissions = () => {
+    const hasCustomerRead = checkPermission('CUSTOMER_READ')
+    const hasProductRead = checkPermission('PRODUCT_READ')
+    
+    const missingPermissions = []
+    if (!hasCustomerRead) missingPermissions.push('Müşteri Okuma (CUSTOMER_READ)')
+    if (!hasProductRead) missingPermissions.push('Ürün Okuma (PRODUCT_READ)')
+    
+    return {
+      canCreateOrder: canCreate,
+      hasRequiredPermissions: missingPermissions.length === 0,
+      missingPermissions,
+      message: missingPermissions.length > 0 
+        ? `Sipariş oluşturabilmek için aşağıdaki yetkilere ihtiyacınız var:\n• ${missingPermissions.join('\n• ')}\n\nYöneticinizle iletişime geçin.`
+        : null
+    }
+  }
+
   // Siparişleri getir
   const fetchOrders = async (params = {}) => {
     if (!canRead) {
@@ -154,6 +173,7 @@ export const useOrders = () => {
     createOrder,
     updateOrder,
     deleteOrder,
-    fetchProductStepsTemplate
+    fetchProductStepsTemplate,
+    checkOrderCreationPermissions
   }
 } 

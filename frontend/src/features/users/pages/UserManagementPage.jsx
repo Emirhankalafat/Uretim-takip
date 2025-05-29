@@ -4,6 +4,7 @@ import { Navigate } from 'react-router-dom'
 import userService from '../services/userService'
 import usePermissions from '../../../hooks/usePermissions'
 import api from '../../../services/api'
+import Toast from '../../../components/Toast'
 
 const UserManagementPage = () => {
   const [users, setUsers] = useState([])
@@ -13,10 +14,16 @@ const UserManagementPage = () => {
   const [availablePermissions, setAvailablePermissions] = useState([])
   const [userPermissions, setUserPermissions] = useState([])
   const [permissionLoading, setPermissionLoading] = useState(false)
+  const [toast, setToast] = useState(null)
+  const [isUpdating, setIsUpdating] = useState(false)
+  
+  // Local state for permission changes (before saving)
+  const [localPermissions, setLocalPermissions] = useState([])
+  const [hasChanges, setHasChanges] = useState(false)
+  
   const { user: currentUser } = useSelector((state) => state.auth)
   const { hasPermission, loading: permissionsLoading } = usePermissions()
 
-  // Define functions before useEffect and conditional returns
   const fetchUsers = async () => {
     try {
       setLoading(true)
@@ -48,49 +55,144 @@ const UserManagementPage = () => {
     try {
       setPermissionLoading(true)
       const response = await api.get(`/permissions/user/${userId}`)
-      setUserPermissions(response.data.data.permissions || [])
+      const permissions = response.data.data.permissions || []
+      setUserPermissions(permissions)
+      setLocalPermissions(permissions.map(p => p.id))
+      setHasChanges(false)
     } catch (error) {
       console.error('Kullanıcı yetkileri yüklenirken hata:', error)
       setUserPermissions([])
+      setLocalPermissions([])
     } finally {
       setPermissionLoading(false)
     }
   }
 
-  const handleAddPermission = async (userId, permissionId) => {
-    try {
-      await api.post('/permissions/add-permission', { userId, permissionId })
-      await fetchUserPermissions(userId)
-      await fetchUsers() // Kullanıcı listesini güncelle
-      setError(null)
-    } catch (error) {
-      setError(error.response?.data?.message || 'Yetki eklenirken hata oluştu')
-    }
-  }
-
-  const handleRemovePermission = async (userId, permissionId) => {
-    try {
-      await api.post('/permissions/remove-permission', { userId, permissionId })
-      await fetchUserPermissions(userId)
-      await fetchUsers() // Kullanıcı listesini güncelle
-      setError(null)
-    } catch (error) {
-      setError(error.response?.data?.message || 'Yetki çıkarılırken hata oluştu')
-    }
-  }
-
   const selectUser = async (user) => {
+    if (hasChanges) {
+      const confirm = window.confirm('Kaydedilmemiş değişiklikleriniz var. Devam etmek istediğinizden emin misiniz?')
+      if (!confirm) return
+    }
+    
     setSelectedUser(user)
     await fetchUserPermissions(user.id)
   }
 
   const clearSelection = () => {
+    if (hasChanges) {
+      const confirm = window.confirm('Kaydedilmemiş değişiklikleriniz var. Devam etmek istediğinizden emin misiniz?')
+      if (!confirm) return
+    }
+    
     setSelectedUser(null)
     setUserPermissions([])
+    setLocalPermissions([])
+    setHasChanges(false)
     setError(null)
   }
 
-  // Move useEffect to the top, before any conditional returns
+  // READ yetkisini otomatik işaretleme fonksiyonu
+  const autoCheckReadPermission = (permissionName, isChecked, currentLocalPermissions) => {
+    const readPermissionName = permissionName.replace(/_CREATE|_UPDATE|_DELETE/, '_READ')
+    const readPermission = availablePermissions.find(p => p.Name === readPermissionName)
+    
+    if (readPermission && isChecked && !currentLocalPermissions.includes(readPermission.id)) {
+      return [...currentLocalPermissions, readPermission.id]
+    }
+    
+    return currentLocalPermissions
+  }
+
+  // READ yetkisi kaldırıldığında CRUD yetkilerini kaldırma fonksiyonu
+  const autoRemoveCRUDPermissions = (permissionName, currentLocalPermissions) => {
+    const modulePrefix = permissionName.replace('_READ', '')
+    const crudPermissions = availablePermissions.filter(p => 
+      p.Name.startsWith(modulePrefix) && 
+      (p.Name.includes('_CREATE') || p.Name.includes('_UPDATE') || p.Name.includes('_DELETE'))
+    )
+    
+    const crudPermissionIds = crudPermissions.map(p => p.id)
+    return currentLocalPermissions.filter(id => !crudPermissionIds.includes(id))
+  }
+
+  const handlePermissionChange = (permissionId, isChecked) => {
+    const permission = availablePermissions.find(p => p.id === permissionId)
+    if (!permission) return
+    
+    let newLocalPermissions = isChecked 
+      ? [...localPermissions, permissionId]
+      : localPermissions.filter(id => id !== permissionId)
+
+    // CREATE, UPDATE, DELETE yetkilerinde READ'i otomatik ekle
+    if (isChecked && (permission.Name.includes('_CREATE') || permission.Name.includes('_UPDATE') || permission.Name.includes('_DELETE'))) {
+      newLocalPermissions = autoCheckReadPermission(permission.Name, isChecked, newLocalPermissions)
+    }
+
+    // READ yetkisi kaldırıldığında tüm CRUD yetkilerini kaldır
+    if (!isChecked && permission.Name.includes('_READ')) {
+      newLocalPermissions = autoRemoveCRUDPermissions(permission.Name, newLocalPermissions)
+    }
+
+    setLocalPermissions(newLocalPermissions)
+    
+    // Değişiklik kontrolü
+    const originalIds = userPermissions.map(p => p.id)
+    const hasAnyChanges = newLocalPermissions.length !== originalIds.length || 
+                         newLocalPermissions.some(id => !originalIds.includes(id))
+    setHasChanges(hasAnyChanges)
+  }
+
+  const saveChanges = async () => {
+    if (!selectedUser) return
+    
+    try {
+      setIsUpdating(true)
+      
+      const originalIds = userPermissions.map(p => p.id)
+      const toAdd = localPermissions.filter(id => !originalIds.includes(id))
+      const toRemove = originalIds.filter(id => !localPermissions.includes(id))
+
+      // Yetkileri ekle
+      for (const permissionId of toAdd) {
+        await api.post('/permissions/add-permission', { 
+          userId: selectedUser.id, 
+          permissionId 
+        })
+      }
+
+      // Yetkileri çıkar
+      for (const permissionId of toRemove) {
+        await api.post('/permissions/remove-permission', { 
+          userId: selectedUser.id, 
+          permissionId 
+        })
+      }
+
+      // Güncel verileri yeniden yükle
+      await fetchUserPermissions(selectedUser.id)
+      await fetchUsers()
+      
+      setToast({
+        type: 'success',
+        message: 'Yetkiler başarıyla güncellendi!'
+      })
+      setHasChanges(false)
+      
+    } catch (error) {
+      setToast({
+        type: 'error',
+        message: error.response?.data?.message || 'Yetkiler güncellenirken hata oluştu'
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const discardChanges = () => {
+    setLocalPermissions(userPermissions.map(p => p.id))
+    setHasChanges(false)
+  }
+
   useEffect(() => {
     fetchUsers()
     fetchAvailablePermissions()
@@ -101,9 +203,8 @@ const UserManagementPage = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 spinner mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Yetkiler kontrol ediliyor...</p>
-          <p className="text-gray-400 text-sm mt-2">Lütfen bekleyiniz</p>
         </div>
       </div>
     )
@@ -118,77 +219,41 @@ const UserManagementPage = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 spinner mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Kullanıcılar yükleniyor...</p>
-          <p className="text-gray-400 text-sm mt-2">Veriler getiriliyor</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl shadow-strong p-8 text-white">
-        <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 bg-white bg-opacity-20 rounded-xl flex items-center justify-center animate-float">
-            <span className="text-3xl">👥</span>
-          </div>
+      <div className="bg-gradient-to-r from-primary-600 to-purple-600 rounded-xl shadow-soft p-6 text-white">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Kullanıcı Yönetimi</h1>
-            <p className="text-primary-100 mt-2">Kullanıcıları yönetin ve yetkileri düzenleyin</p>
-            <div className="flex items-center space-x-4 mt-4">
-              <div className="bg-white bg-opacity-20 rounded-lg px-3 py-1">
-                <span className="text-sm font-medium">{users.length} Kullanıcı</span>
-              </div>
-              {currentUser?.is_SuperAdmin && (
-                <div className="bg-danger-500 bg-opacity-80 rounded-lg px-3 py-1">
-                  <span className="text-sm font-medium">SuperAdmin</span>
-                </div>
-              )}
+            <h1 className="text-2xl font-bold">Kullanıcı Yönetimi</h1>
+            <p className="text-blue-100 mt-1">Kullanıcıları yönetin ve yetkileri düzenleyin</p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="bg-white bg-opacity-20 rounded-lg px-3 py-1">
+              <span className="text-sm font-medium">{users.length} Kullanıcı</span>
             </div>
+            {currentUser?.is_SuperAdmin && (
+              <div className="bg-red-500 bg-opacity-80 rounded-lg px-3 py-1">
+                <span className="text-sm font-medium">SuperAdmin</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="bg-gradient-to-r from-danger-50 to-danger-100 border border-danger-200 rounded-xl p-4 shadow-soft animate-slide-up">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-danger-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm">⚠</span>
-              </div>
-              <div className="text-danger-800 font-medium">{error}</div>
-            </div>
-            <button 
-              onClick={() => setError(null)}
-              className="text-danger-400 hover:text-danger-600 text-xl font-bold transition-colors"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Users List */}
-        <div className="bg-white rounded-2xl shadow-strong border border-gray-100">
-          <div className="p-6 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl flex items-center justify-center">
-                  <span className="text-white text-lg">👤</span>
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Kullanıcılar</h2>
-                  <p className="text-gray-500 text-sm">Yetki düzenlemek için kullanıcı seçin</p>
-                </div>
-              </div>
-              <div className="bg-gradient-to-r from-primary-100 to-primary-200 text-primary-800 px-3 py-1 rounded-full text-sm font-medium">
-                {users.length} kişi
-              </div>
-            </div>
+        <div className="bg-white rounded-xl shadow-soft border border-gray-100">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Kullanıcılar</h2>
+            <p className="text-gray-600 text-sm">Yetki düzenlemek için kullanıcı seçin</p>
           </div>
 
           <div className="p-6">
@@ -197,40 +262,38 @@ const UserManagementPage = () => {
                 <div
                   key={user.id}
                   onClick={() => selectUser(user)}
-                  className={`card-hover cursor-pointer p-4 rounded-xl border-2 transition-all duration-300 ${
+                  className={`cursor-pointer p-4 rounded-lg border-2 transition-all ${
                     selectedUser?.id === user.id
-                      ? 'border-primary-300 bg-gradient-to-r from-primary-50 to-primary-100 shadow-medium'
-                      : 'border-gray-200 bg-gradient-to-r from-gray-50 to-white hover:border-primary-200 hover:shadow-soft'
+                      ? 'border-primary-300 bg-primary-50'
+                      : 'border-gray-200 bg-gray-50 hover:border-primary-200 hover:bg-primary-25'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shadow-soft ${
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
                         user.is_SuperAdmin 
-                          ? 'bg-gradient-to-r from-danger-500 to-danger-600' 
-                          : 'bg-gradient-to-r from-primary-500 to-primary-600'
+                          ? 'bg-red-500' 
+                          : 'bg-primary-500'
                       }`}>
                         {user.name?.charAt(0)?.toUpperCase() || 'U'}
                       </div>
-                      <div className="flex-1">
+                      <div>
                         <div className="flex items-center space-x-2">
                           <h3 className="font-semibold text-gray-900">{user.name}</h3>
                           {user.is_SuperAdmin && (
-                            <span className="permission-badge bg-gradient-to-r from-danger-100 to-danger-200 text-danger-800 border border-danger-300">
+                            <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
                               SuperAdmin
                             </span>
                           )}
                         </div>
                         <p className="text-gray-500 text-sm">{user.email}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <span className="permission-badge bg-gradient-to-r from-success-100 to-success-200 text-success-800 border border-success-300">
-                            {user.permissionCount} yetki
-                          </span>
-                        </div>
+                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                          {user.permissionCount} yetki
+                        </span>
                       </div>
                     </div>
                     {selectedUser?.id === user.id && (
-                      <div className="w-3 h-3 bg-primary-500 rounded-full animate-pulse"></div>
+                      <div className="w-3 h-3 bg-primary-500 rounded-full"></div>
                     )}
                   </div>
                 </div>
@@ -239,47 +302,53 @@ const UserManagementPage = () => {
           </div>
         </div>
 
-        {/* Permission Management Section */}
+        {/* Permission Management */}
         {selectedUser && (
-          <div className="bg-white rounded-2xl shadow-strong border border-gray-100 animate-slide-up">
-            <div className="p-6 border-b border-gray-100">
+          <div className="bg-white rounded-xl shadow-soft border border-gray-100">
+            <div className="p-6 border-b border-gray-200">
               <div className="flex justify-between items-center">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shadow-medium ${
-                    selectedUser.is_SuperAdmin 
-                      ? 'bg-gradient-to-r from-danger-500 to-danger-600' 
-                      : 'bg-gradient-to-r from-primary-500 to-primary-600'
-                  }`}>
-                    {selectedUser.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">
-                      {selectedUser.name} - Yetki Yönetimi
-                    </h2>
-                    <p className="text-gray-500">{selectedUser.email}</p>
-                  </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {selectedUser.name} - Yetkiler
+                  </h2>
+                  <p className="text-gray-600 text-sm">{selectedUser.email}</p>
                 </div>
-                <div className="flex items-center space-x-2">
-                  {selectedUser.is_SuperAdmin && (
-                    <span className="permission-badge bg-gradient-to-r from-danger-100 to-danger-200 text-danger-800 border border-danger-300">
-                      SuperAdmin
-                    </span>
-                  )}
+                <button
+                  onClick={clearSelection}
+                  className="text-gray-400 hover:text-gray-600 text-xl"
+                >
+                  ×
+                </button>
+              </div>
+              
+              {/* Save/Discard Buttons */}
+              {hasChanges && (
+                <div className="mt-4 flex space-x-3">
                   <button
-                    onClick={clearSelection}
-                    className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
+                    onClick={saveChanges}
+                    disabled={isUpdating}
+                    className={`flex-1 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors ${
+                      isUpdating ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                   >
-                    ×
+                    {isUpdating ? 'Kaydediliyor...' : '💾 Değişiklikleri Kaydet'}
+                  </button>
+                  <button
+                    onClick={discardChanges}
+                    disabled={isUpdating}
+                    className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                  >
+                    ↩️ İptal Et
                   </button>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="p-6">
               {permissionLoading ? (
                 <div className="text-center py-12">
-                  <div className="w-12 h-12 spinner mx-auto mb-4"></div>
-                  <p className="text-gray-600 font-medium">Yetkiler yükleniyor...</p>
+                  <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-gray-600">Yetkiler yükleniyor...</p>
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -292,84 +361,57 @@ const UserManagementPage = () => {
                       return groups
                     }, {})
                   ).map(([type, permissions]) => (
-                    <div key={type} className="space-y-4">
-                      <div className="flex items-center space-x-3 pb-3 border-b border-gray-200">
-                        <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
-                          <span className="text-white text-sm">
-                            {type === 'USER' && '👤'}
-                            {type === 'ADMIN' && '⚙️'}
-                            {type === 'PRODUCTION' && '🏭'}
-                            {type === 'REPORT' && '📊'}
-                            {type === 'SYSTEM' && '🔧'}
-                            {!['USER', 'ADMIN', 'PRODUCTION', 'REPORT', 'SYSTEM'].includes(type) && '📋'}
-                          </span>
-                        </div>
-                        <h3 className="text-lg font-bold text-gray-900">
-                          {type === 'USER' && 'Kullanıcı Yetkileri'}
-                          {type === 'ADMIN' && 'Yönetici Yetkileri'}
-                          {type === 'PRODUCTION' && 'Üretim Yetkileri'}
-                          {type === 'REPORT' && 'Rapor Yetkileri'}
-                          {type === 'SYSTEM' && 'Sistem Yetkileri'}
-                          {!['USER', 'ADMIN', 'PRODUCTION', 'REPORT', 'SYSTEM'].includes(type) && `${type} Yetkileri`}
-                        </h3>
-                      </div>
+                    <div key={type} className="space-y-3">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
+                        {type === 'USER' && '👤 Kullanıcı Yetkileri'}
+                        {type === 'ADMIN' && '⚙️ Yönetici Yetkileri'}
+                        {type === 'PRODUCTION' && '🏭 Üretim Yetkileri'}
+                        {type === 'REPORT' && '📊 Rapor Yetkileri'}
+                        {type === 'SYSTEM' && '🔧 Sistem Yetkileri'}
+                        {!['USER', 'ADMIN', 'PRODUCTION', 'REPORT', 'SYSTEM'].includes(type) && `📋 ${type} Yetkileri`}
+                      </h3>
                       
-                      <div className="grid grid-cols-1 gap-3">
+                      <div className="grid grid-cols-1 gap-2">
                         {permissions.map((permission) => {
-                          const hasThisPermission = userPermissions.some(up => 
-                            Number(up.id) === Number(permission.id)
-                          )
+                          const isChecked = localPermissions.includes(permission.id)
                           
-                          // Yetki kontrolü - AYNEN KORUNDU
+                          // Yetki kontrolü
                           const canModify = currentUser?.is_SuperAdmin || 
                             (permission.Name !== 'USER_MANAGEMENT' && !selectedUser.is_SuperAdmin)
                           
                           return (
-                            <div key={permission.id} className="card-hover bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl p-4 transition-all duration-300">
-                              <div className="flex justify-between items-start mb-3">
-                                <div className="flex-1">
-                                  <div className="flex items-center space-x-2 mb-2">
-                                    <h4 className="font-semibold text-gray-900">
-                                      {permission.Name}
-                                    </h4>
-                                    <span className={`permission-badge ${
-                                      hasThisPermission 
-                                        ? 'permission-badge-active' 
-                                        : 'permission-badge-inactive'
-                                    }`}>
-                                      {hasThisPermission ? '✓ Aktif' : '✗ Pasif'}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs text-gray-500">
-                                    ID: {permission.id}
-                                  </p>
-                                </div>
-                              </div>
-                              
-                              {canModify && (
-                                <button
-                                  onClick={() => hasThisPermission 
-                                    ? handleRemovePermission(selectedUser.id, permission.id)
-                                    : handleAddPermission(selectedUser.id, permission.id)
-                                  }
-                                  className={`btn-modern w-full px-4 py-3 rounded-lg font-medium transition-all duration-300 ${
-                                    hasThisPermission
-                                      ? 'bg-gradient-to-r from-danger-500 to-danger-600 text-white hover:from-danger-600 hover:to-danger-700 shadow-soft glow-danger'
-                                      : 'bg-gradient-to-r from-success-500 to-success-600 text-white hover:from-success-600 hover:to-success-700 shadow-soft glow-success'
-                                  }`}
-                                >
-                                  {hasThisPermission ? '✗ Yetkiyi Çıkar' : '+ Yetki Ekle'}
-                                </button>
-                              )}
-                              
-                              {!canModify && (
-                                <div className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-500 text-center py-3 rounded-lg border border-gray-300">
-                                  <span className="text-sm font-medium">
-                                    {permission.Name === 'USER_MANAGEMENT' ? '🔒 Sadece SuperAdmin değiştirebilir' : '🚫 Değiştirilemez'}
+                            <label key={permission.id} className={`flex items-center space-x-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                              isChecked 
+                                ? 'bg-primary-50 border-primary-200' 
+                                : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                            } ${!canModify ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => canModify && handlePermissionChange(permission.id, e.target.checked)}
+                                disabled={!canModify}
+                                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-gray-900">
+                                    {permission.Name}
+                                  </span>
+                                  <span className={`text-xs px-2 py-1 rounded-full ${
+                                    isChecked 
+                                      ? 'bg-primary-100 text-primary-800' 
+                                      : 'bg-gray-100 text-gray-600'
+                                  }`}>
+                                    {isChecked ? '✓ Aktif' : '✗ Pasif'}
                                   </span>
                                 </div>
-                              )}
-                            </div>
+                                {!canModify && (
+                                  <span className="text-xs text-red-600">
+                                    {permission.Name === 'USER_MANAGEMENT' ? 'Sadece SuperAdmin değiştirebilir' : 'Değiştirilemez'}
+                                  </span>
+                                )}
+                              </div>
+                            </label>
                           )
                         })}
                       </div>
@@ -381,6 +423,24 @@ const UserManagementPage = () => {
           </div>
         )}
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Error */}
+      {error && (
+        <Toast
+          type="error"
+          message={error}
+          onClose={() => setError(null)}
+        />
+      )}
     </div>
   )
 }

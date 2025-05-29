@@ -14,6 +14,7 @@ import ProductStepsPage from '../features/product-steps/pages/ProductStepsPage'
 import ProductStepsTablePage from '../features/product-steps/pages/ProductStepsTablePage'
 import CustomersPage from '../features/customers/pages/CustomersPage'
 import OrdersPage from '../features/orders/pages/OrdersPage'
+import OrderDetailPage from '../features/orders/pages/OrderDetailPage'
 import MyJobsPage from '../features/my-jobs/pages/MyJobsPage'
 import DashboardPage from '../pages/DashboardPage'
 import HomePage from '../pages/HomePage'
@@ -244,6 +245,16 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <OrdersPage />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Order Detail Route */}
+      <Route 
+        path="/orders/:id" 
+        element={
+          <ProtectedRoute>
+            <OrderDetailPage />
           </ProtectedRoute>
         } 
       />

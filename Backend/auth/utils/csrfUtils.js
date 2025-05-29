@@ -22,7 +22,11 @@ async function createCsrfToken(userId, sessionTTL = 24 * 60 * 60) { // Default 1
     // Redis'e kaydet (TTL ile)
     await redisClient.setEx(key, sessionTTL, token);
     
-    console.log(`CSRF token oluşturuldu - User: ${userId}, TTL: ${sessionTTL}s`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`🔍 CSRF token oluşturuldu - User: ${userId}, Token: ${token.substring(0, 16)}..., TTL: ${sessionTTL}s`);
+    } else {
+      console.log(`CSRF token oluşturuldu - User: ${userId}, TTL: ${sessionTTL}s`);
+    }
     return token;
   } catch (error) {
     console.error('CSRF token oluşturma hatası:', error);
@@ -42,12 +46,21 @@ async function verifyCsrfToken(userId, token) {
     const storedToken = await redisClient.get(key);
     
     if (!storedToken) {
-      console.log(`CSRF token bulunamadı - User: ${userId}`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`🔍 CSRF token bulunamadı - User: ${userId}, Redis Key: ${key}`);
+      } else {
+        console.log(`CSRF token bulunamadı - User: ${userId}`);
+      }
       return false;
     }
     
     const isValid = storedToken === token;
-    console.log(`CSRF token doğrulama - User: ${userId}, Valid: ${isValid}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`🔍 CSRF token doğrulama - User: ${userId}, Valid: ${isValid}`);
+      console.log(`🔍 Stored: ${storedToken.substring(0, 16)}..., Received: ${token.substring(0, 16)}...`);
+    } else {
+      console.log(`CSRF token doğrulama - User: ${userId}, Valid: ${isValid}`);
+    }
     
     return isValid;
   } catch (error) {
@@ -64,7 +77,11 @@ async function verifyCsrfToken(userId, token) {
  */
 async function refreshCsrfToken(userId, sessionTTL = 24 * 60 * 60) {
   try {
-    console.log(`CSRF token yenileniyor - User: ${userId}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`🔍 CSRF token yenileniyor - User: ${userId}`);
+    } else {
+      console.log(`CSRF token yenileniyor - User: ${userId}`);
+    }
     return await createCsrfToken(userId, sessionTTL);
   } catch (error) {
     console.error('CSRF token yenileme hatası:', error);
@@ -80,7 +97,11 @@ async function deleteCsrfToken(userId) {
   try {
     const key = `csrf:${userId}`;
     const result = await redisClient.del(key);
-    console.log(`CSRF token silindi - User: ${userId}, Deleted: ${result > 0}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`🔍 CSRF token silindi - User: ${userId}, Key: ${key}, Deleted: ${result > 0}`);
+    } else {
+      console.log(`CSRF token silindi - User: ${userId}, Deleted: ${result > 0}`);
+    }
     return result > 0;
   } catch (error) {
     console.error('CSRF token silme hatası:', error);

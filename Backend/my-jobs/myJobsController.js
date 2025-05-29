@@ -7,8 +7,8 @@ const getMyJobs = async (req, res) => {
     const user_id = req.user.id;
     const company_id = req.user.company_id;
 
-    // Kullanıcının atandığı tüm step'leri getir
-    const mySteps = await prisma.orderSteps.findMany({
+    // Kullanıcının atandığı tüm step'leri getir (aktif işler için)
+    const activeSteps = await prisma.orderSteps.findMany({
       where: {
         assigned_user: BigInt(user_id),
         order: {
@@ -42,9 +42,39 @@ const getMyJobs = async (req, res) => {
       ]
     });
 
-    // Her order için önceki step'lerin durumunu kontrol et
-    const jobsWithStatus = await Promise.all(
-      mySteps.map(async (step) => {
+    // Tamamlanan işler için ayrı sorgu (tüm sipariş durumlarından)
+    const completedSteps = await prisma.orderSteps.findMany({
+      where: {
+        assigned_user: BigInt(user_id),
+        status: 'COMPLETED',
+        order: {
+          Company_id: BigInt(company_id)
+        }
+      },
+      include: {
+        order: {
+          select: {
+            id: true,
+            order_number: true,
+            status: true,
+            priority: true,
+            deadline: true,
+            customer: {
+              select: { id: true, Name: true }
+            }
+          }
+        },
+        product: {
+          select: { id: true, name: true, description: true }
+        }
+      },
+      orderBy: { completed_at: 'desc' }, // En son tamamlananlar önce
+      take: 50 // Son 50 tamamlanan işi getir
+    });
+
+    // Her active order için önceki step'lerin durumunu kontrol et
+    const activeJobsWithStatus = await Promise.all(
+      activeSteps.map(async (step) => {
         // Bu step'ten önceki step'leri kontrol et
         const previousSteps = await prisma.orderSteps.findMany({
           where: {
@@ -87,21 +117,40 @@ const getMyJobs = async (req, res) => {
       })
     );
 
+    // Completed işleri formatla
+    const formattedCompletedJobs = completedSteps.map(step => ({
+      ...step,
+      id: step.id.toString(),
+      Order_id: step.Order_id.toString(),
+      Product_id: step.Product_id.toString(),
+      assigned_user: step.assigned_user.toString(),
+      isMyTurn: true, // Tamamlanan işler için her zaman true
+      previousStepsCompleted: true,
+      order: {
+        ...step.order,
+        id: step.order.id.toString(),
+        customer: {
+          ...step.order.customer,
+          id: step.order.customer.id.toString()
+        }
+      },
+      product: {
+        ...step.product,
+        id: step.product.id.toString()
+      }
+    }));
+
     // Sırası gelenler ve gelecek işler olarak ayır
-    const currentJobs = jobsWithStatus.filter(job => 
+    const currentJobs = activeJobsWithStatus.filter(job => 
       job.isMyTurn && job.status === 'WAITING'
     );
 
-    const upcomingJobs = jobsWithStatus.filter(job => 
+    const upcomingJobs = activeJobsWithStatus.filter(job => 
       !job.isMyTurn && job.status === 'WAITING'
     );
 
-    const inProgressJobs = jobsWithStatus.filter(job => 
+    const inProgressJobs = activeJobsWithStatus.filter(job => 
       job.status === 'IN_PROGRESS'
-    );
-
-    const completedJobs = jobsWithStatus.filter(job => 
-      job.status === 'COMPLETED'
     );
 
     res.json({
@@ -110,14 +159,14 @@ const getMyJobs = async (req, res) => {
         current: currentJobs,        // Sırası gelmiş, yapılabilir işler
         inProgress: inProgressJobs,  // Devam eden işler
         upcoming: upcomingJobs,      // Gelecek işler (sırası henüz gelmemiş)
-        completed: completedJobs     // Tamamlanan işler
+        completed: formattedCompletedJobs // Tamamlanan işler (tüm siparişlerden)
       },
       summary: {
-        total: jobsWithStatus.length,
+        total: activeJobsWithStatus.length + formattedCompletedJobs.length,
         current: currentJobs.length,
         inProgress: inProgressJobs.length,
         upcoming: upcomingJobs.length,
-        completed: completedJobs.length
+        completed: formattedCompletedJobs.length
       }
     });
   } catch (error) {

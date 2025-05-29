@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 // Sipariş oluşturma
 const createOrder = async (req, res) => {
   try {
-    const { Customer_id, priority, deadline, notes, products } = req.body;
+    const { Customer_id, priority, deadline, notes, products, is_stock } = req.body;
     const company_id = req.user.company_id;
 
     // Müşteri kontrolü
@@ -39,7 +39,9 @@ const createOrder = async (req, res) => {
       }
     });
 
-    const orderNumber = `SIP-${year}${month}${day}-${String(todayOrderCount + 1).padStart(3, '0')}`;
+    // Sipariş numarasını is_stock durumuna göre oluştur
+    const orderPrefix = is_stock ? 'STK' : 'SIP';
+    const orderNumber = `${orderPrefix}-${year}${month}${day}-${String(todayOrderCount + 1).padStart(3, '0')}`;
 
     // Transaction ile sipariş ve step'leri oluştur
     const result = await prisma.$transaction(async (tx) => {
@@ -52,6 +54,7 @@ const createOrder = async (req, res) => {
           priority: priority || 'NORMAL',
           deadline: deadline ? new Date(deadline) : null,
           notes,
+          is_stock: is_stock || false,
           status: 'PENDING'
         }
       });
@@ -198,11 +201,55 @@ const getProductStepsTemplate = async (req, res) => {
 const getOrders = async (req, res) => {
   try {
     const company_id = req.user.company_id;
+    const user_id = req.user.id;
+    const is_SuperAdmin = req.user.is_SuperAdmin;
     const { status, customer_id, search, page = 1, limit = 10 } = req.query;
 
     let whereClause = {
       Company_id: BigInt(company_id)
     };
+
+    // SuperAdmin değilse yetki kontrolü yap
+    if (!is_SuperAdmin) {
+      // Kullanıcının ORDER_READ yetkisi var mı kontrol et
+      const orderReadPermission = await prisma.users_Permissions.findFirst({
+        where: {
+          User_id: BigInt(user_id),
+          permission: {
+            Name: 'ORDER_READ'
+          }
+        },
+        include: {
+          permission: true
+        }
+      });
+
+      if (!orderReadPermission) {
+        // ORDER_READ yetkisi yoksa sadece kendisine atanan adımları görebilir
+        const assignedOrderIds = await prisma.orderSteps.findMany({
+          where: {
+            assigned_user: BigInt(user_id)
+          },
+          select: {
+            Order_id: true
+          }
+        });
+
+        const orderIds = [...new Set(assignedOrderIds.map(step => step.Order_id))];
+        
+        if (orderIds.length === 0) {
+          return res.json({
+            message: 'Size atanmış sipariş bulunmuyor.',
+            orders: [],
+            pagination: { page: 1, limit: parseInt(limit), total: 0, totalPages: 0 }
+          });
+        }
+
+        whereClause.id = {
+          in: orderIds
+        };
+      }
+    }
 
     // Filtreler
     if (status) {
@@ -364,7 +411,7 @@ const getOrderById = async (req, res) => {
 const updateOrder = async (req, res) => {
   try {
     const { id } = req.params;
-    const { Customer_id, priority, deadline, notes, status } = req.body;
+    const { Customer_id, priority, deadline, notes, status, is_stock } = req.body;
     const company_id = req.user.company_id;
 
     // Sipariş var mı ve aynı şirkette mi kontrol et
@@ -401,6 +448,7 @@ const updateOrder = async (req, res) => {
         ...(deadline && { deadline: new Date(deadline) }),
         ...(notes !== undefined && { notes }),
         ...(status && { status }),
+        ...(is_stock !== undefined && { is_stock }),
         updated_at: new Date()
       }
     });

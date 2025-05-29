@@ -272,8 +272,9 @@ const refreshAccessToken = async (req, res) => {
     const newRefreshToken = createRefreshToken();
     await saveRefreshToken(Number(user.id), newRefreshToken);
 
-    // CSRF token'ın TTL'ini güncelle (session yenilendiği için)
-    await updateCsrfTokenTTL(Number(user.id), 24 * 60 * 60); // 1 gün
+    // CSRF token'ı yenile: önce sil, sonra yeni oluştur
+    await deleteCsrfToken(Number(user.id)); // Eski CSRF token'ı Redis'ten sil
+    const newCsrfToken = await createCsrfToken(Number(user.id), 24 * 60 * 60); // Yeni CSRF token oluştur
 
     // Yeni cookie'leri ayarla
     res.cookie('accessToken', newAccessToken, {
@@ -290,17 +291,19 @@ const refreshAccessToken = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 gün
     });
 
-    // Güncel CSRF token'ı al ve frontend'e gönder
-    const currentCsrfToken = await getCsrfToken(Number(user.id));
+    // Yeni CSRF token'ı cookie olarak da gönder
+    res.cookie('csrfToken', newCsrfToken, {
+      httpOnly: false, // JavaScript'ten erişilebilir olmalı
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000 // 1 gün (milisaniye cinsinden)
+    });
 
-    // CSRF token'ı cookie olarak da gönder
-    if (currentCsrfToken) {
-      res.cookie('csrfToken', currentCsrfToken, {
-        httpOnly: false, // JavaScript'ten erişilebilir olmalı
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 24 * 60 * 60 * 1000 // 1 gün (milisaniye cinsinden)
-      });
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`🔍 Refresh token işlemi tamamlandı - User: ${user.id}`);
+      console.log(`🔍 Yeni CSRF token: ${newCsrfToken.substring(0, 16)}...`);
+    } else {
+      console.log(`Refresh token işlemi tamamlandı - User: ${user.id}`);
     }
 
     res.status(200).json({
@@ -313,7 +316,7 @@ const refreshAccessToken = async (req, res) => {
         company_name: user.company.Name,
         is_SuperAdmin: user.is_SuperAdmin
       },
-      csrfToken: currentCsrfToken // CSRF token'ı frontend'e gönder
+      csrfToken: newCsrfToken // Yeni CSRF token'ı frontend'e gönder
     });
 
   } catch (error) {
