@@ -9,6 +9,7 @@ const userRoutes = require('./user/userRoutes');
 const categoryRoutes = require('./category/categoryRoutes');
 const productRoutes = require('./product/productRoutes');
 const productStepsRoutes = require('./product-steps/productStepsRoutes');
+const customerRoutes = require('./customer/customerRoutes');
 const { startTokenCleanupScheduler } = require('./auth/utils/scheduler');
 const { authenticateToken } = require('./auth/middleware/authMiddleware');
 const { csrfProtection } = require('./auth/middleware/csrfMiddleware');
@@ -55,6 +56,7 @@ app.use('/api/user', authenticateToken, csrfProtection, userRoutes);
 app.use('/api/categories', authenticateToken, csrfProtection, categoryRoutes);
 app.use('/api/products', authenticateToken, csrfProtection, productRoutes);
 app.use('/api/product-steps', authenticateToken, csrfProtection, productStepsRoutes);
+app.use('/api/customers', authenticateToken, csrfProtection, customerRoutes);
 
 // Production modda tüm diğer route'ları React app'e yönlendir (SPA routing için)
 if (isProduction) {
