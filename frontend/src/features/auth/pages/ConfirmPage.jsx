@@ -9,8 +9,17 @@ const ConfirmPage = () => {
   const hasConfirmed = useRef(false) // Duplicate request'leri engellemek için
   
   const token = searchParams.get('token')
+  const urlStatus = searchParams.get('status') // Backend'ten gelen status
+  const urlMessage = searchParams.get('message') // Backend'ten gelen message
 
   useEffect(() => {
+    // Eğer URL'de status varsa, doğrudan onu kullan (backend redirect'ten geldi)
+    if (urlStatus && urlMessage) {
+      setStatus(urlStatus)
+      setMessage(decodeURIComponent(urlMessage))
+      return
+    }
+
     const confirmAccount = async () => {
       if (!token) {
         setStatus('error')
@@ -44,7 +53,7 @@ const ConfirmPage = () => {
     }
 
     confirmAccount()
-  }, [token])
+  }, [token, urlStatus, urlMessage])
 
   if (status === 'loading') {
     return (

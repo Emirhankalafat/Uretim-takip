@@ -14,19 +14,10 @@ setApiStore(store)
 // Auth Initialize Component
 const AuthInitializer = ({ children }) => {
   const dispatch = useDispatch()
-  const { initialized, loading, isAuthenticated } = useSelector((state) => state.auth)
+  const { initialized, loading } = useSelector((state) => state.auth)
 
   useEffect(() => {
     const initializeAuth = async () => {
-      // Eğer zaten login sayfasındaysak initialize etmeye gerek yok
-      if (window.location.pathname.includes('/login') || 
-          window.location.pathname.includes('/register') ||
-          window.location.pathname.includes('/confirm') ||
-          window.location.pathname.includes('/accept-invite')) {
-        dispatch(initializeFailure())
-        return
-      }
-
       dispatch(initializeStart())
       try {
         const userData = await authService.initialize()
@@ -41,14 +32,8 @@ const AuthInitializer = ({ children }) => {
     }
   }, [dispatch, initialized])
 
-  // Anasayfadaysak loading gösterme ve hata olsa bile sayfayı render et
-  const isHomePage = window.location.pathname === '/'
-  
-  // Auth initialize edilene kadar loading göster (sadece protected sayfalarda, anasayfa hariç)
-  if (!initialized && loading && !isHomePage && !window.location.pathname.includes('/login') && 
-      !window.location.pathname.includes('/register') &&
-      !window.location.pathname.includes('/confirm') &&
-      !window.location.pathname.includes('/accept-invite')) {
+  // Auth initialize edilene kadar loading göster (tüm sayfalarda)
+  if (!initialized && loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

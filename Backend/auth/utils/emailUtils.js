@@ -97,7 +97,22 @@ const sendConfirmEmail = async (userEmail, userName, confirmToken) => {
     }
     
     const baseUrl = getBaseUrl();
-    const confirmUrl = `${baseUrl}/auth/confirm?token=${confirmToken}`;
+    // E-mail'deki link backend API endpoint'ine gitmeli
+    const backendUrl = isDevelopment 
+      ? `http://localhost:${process.env.PORT || 3001}`
+      : `${process.env.BACKEND_URL || baseUrl}`;
+    const confirmUrl = `${backendUrl}/api/auth/confirm?token=${confirmToken}`;
+    
+    // Debug log'ları
+    console.log('🔍 Email Debug:', {
+      environment: process.env.NODE_ENV,
+      baseUrl: baseUrl,
+      backendUrl: backendUrl,
+      frontendUrl: process.env.FRONTEND_URL,
+      confirmUrl: confirmUrl,
+      userEmail: userEmail
+    });
+    
     const colors = getThemeColors();
     const environmentBadge = getEnvironmentBadge();
     

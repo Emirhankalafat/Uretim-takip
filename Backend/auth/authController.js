@@ -101,7 +101,10 @@ const confirmUser = async (req, res) => {
       // Bu durumda token'ın hangi kullanıcıya ait olduğunu bilemeyiz
       // Bu yüzden genel bir hata mesajı döneriz
       console.log('Token not found, checking if this is a duplicate request...');
-      return res.status(400).json({ message: 'Geçersiz veya süresi dolmuş token.' });
+      
+      // Frontend'e redirect ile hata mesajı gönder
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      return res.redirect(`${frontendUrl}/confirm?status=error&message=${encodeURIComponent('Geçersiz veya süresi dolmuş token.')}`);
     }
 
     if (record) {
@@ -118,7 +121,8 @@ const confirmUser = async (req, res) => {
 
     // Token süresi dolmuş mu kontrol et
     if (record.expiresAt < new Date()) {
-      return res.status(400).json({ message: 'Geçersiz veya süresi dolmuş token.' });
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      return res.redirect(`${frontendUrl}/confirm?status=error&message=${encodeURIComponent('Geçersiz veya süresi dolmuş token.')}`);
     }
 
     // Kullanıcı zaten confirm edilmişse, başarılı response döndür (idempotent)
@@ -132,7 +136,8 @@ const confirmUser = async (req, res) => {
         console.log('Token already deleted');
       });
       
-      return res.status(200).json({ message: 'Kullanıcı doğrulandı.' });
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      return res.redirect(`${frontendUrl}/confirm?status=success&message=${encodeURIComponent('Kullanıcı doğrulandı.')}`);
     }
 
     // Kullanıcıyı onayla
@@ -147,10 +152,15 @@ const confirmUser = async (req, res) => {
     });
 
     console.log('User confirmed successfully');
-    res.status(200).json({ message: 'Kullanıcı doğrulandı.' });
+    
+    // Frontend'e redirect ile başarı mesajı gönder
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/confirm?status=success&message=${encodeURIComponent('Kullanıcı doğrulandı.')}`);
+    
   } catch (error) {
     console.error('Doğrulama hatası:', error);
-    res.status(500).json({ message: 'Sunucu hatası.' });
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/confirm?status=error&message=${encodeURIComponent('Sunucu hatası.')}`);
   }
 };
 

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
+import { useState, useEffect } from 'react'
 import { 
   ChartBarIcon, 
   CogIcon, 
@@ -10,7 +11,10 @@ import {
 } from '@heroicons/react/24/outline'
 
 const HomePage = () => {
-  const { isAuthenticated, initialized, user } = useSelector((state) => state.auth)
+  const { isAuthenticated, user } = useSelector((state) => state.auth)
+
+  // Auth durumu: Redux state'i güvenilir
+  const userLoggedIn = isAuthenticated
 
   const features = [
     {
@@ -58,7 +62,7 @@ const HomePage = () => {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              {isAuthenticated ? (
+              {userLoggedIn ? (
                 <>
                   <span className="text-gray-700 text-sm">
                     Hoş geldiniz, {user?.name || user?.email}
@@ -104,7 +108,7 @@ const HomePage = () => {
               verimliliği artırın ve maliyetleri düşürün.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              {isAuthenticated ? (
+              {userLoggedIn ? (
                 <Link
                   to="/dashboard"
                   className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg text-lg font-medium transition-colors inline-flex items-center justify-center"
@@ -187,10 +191,10 @@ const HomePage = () => {
             </div>
             <div className="bg-white p-8 rounded-2xl shadow-xl">
               <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-                {isAuthenticated ? 'Sisteme Devam Et' : 'Hemen Başlayın'}
+                {userLoggedIn ? 'Sisteme Devam Et' : 'Hemen Başlayın'}
               </h3>
               <div className="space-y-4">
-                {isAuthenticated ? (
+                {userLoggedIn ? (
                   <Link
                     to="/dashboard"
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors block text-center"
@@ -215,7 +219,7 @@ const HomePage = () => {
                 )}
               </div>
               <p className="text-sm text-gray-500 text-center mt-4">
-                {isAuthenticated ? 
+                {userLoggedIn ? 
                   `Hoş geldiniz, ${user?.name || user?.email}` : 
                   'Kredi kartı gerektirmez • 14 gün ücretsiz deneme'
                 }
@@ -234,7 +238,7 @@ const HomePage = () => {
               Üretim süreçlerinizi dijitalleştirin ve verimliliği artırın.
             </p>
             <div className="flex justify-center space-x-6">
-              {isAuthenticated ? (
+              {userLoggedIn ? (
                 <Link to="/dashboard" className="text-gray-400 hover:text-white transition-colors">
                   Dashboard
                 </Link>
