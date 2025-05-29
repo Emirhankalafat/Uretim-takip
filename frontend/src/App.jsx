@@ -41,8 +41,11 @@ const AuthInitializer = ({ children }) => {
     }
   }, [dispatch, initialized])
 
-  // Auth initialize edilene kadar loading göster (sadece protected sayfalarda)
-  if (!initialized && loading && !window.location.pathname.includes('/login') && 
+  // Anasayfadaysak loading gösterme ve hata olsa bile sayfayı render et
+  const isHomePage = window.location.pathname === '/'
+  
+  // Auth initialize edilene kadar loading göster (sadece protected sayfalarda, anasayfa hariç)
+  if (!initialized && loading && !isHomePage && !window.location.pathname.includes('/login') && 
       !window.location.pathname.includes('/register') &&
       !window.location.pathname.includes('/confirm') &&
       !window.location.pathname.includes('/accept-invite')) {

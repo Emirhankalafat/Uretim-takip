@@ -85,24 +85,13 @@ const PublicRoute = ({ children }) => {
 const HomeRoute = () => {
   const { isAuthenticated, initialized } = useSelector((state) => state.auth)
   
-  // Henüz initialize edilmediyse bekle
-  if (!initialized) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Yükleniyor...</p>
-        </div>
-      </div>
-    )
-  }
-  
-  // Giriş yapmışsa dashboard'a yönlendir
-  if (isAuthenticated) {
+  // Anasayfa için özel davranış: initialize edilmesini bekleme, hata olsa bile anasayfayı göster
+  // Sadece başarılı giriş varsa dashboard'a yönlendir
+  if (initialized && isAuthenticated) {
     return <Navigate to="/dashboard" replace />
   }
   
-  // Giriş yapmamışsa anasayfayı göster
+  // Giriş yapılmamışsa veya auth hatası varsa anasayfayı göster
   return <HomePage />
 }
 
