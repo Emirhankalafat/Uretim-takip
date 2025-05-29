@@ -83,15 +83,8 @@ const PublicRoute = ({ children }) => {
 
 // Home Route Component (smart routing based on auth status)
 const HomeRoute = () => {
-  const { isAuthenticated, initialized } = useSelector((state) => state.auth)
-  
-  // Anasayfa için özel davranış: initialize edilmesini bekleme, hata olsa bile anasayfayı göster
-  // Sadece başarılı giriş varsa dashboard'a yönlendir
-  if (initialized && isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
-  }
-  
-  // Giriş yapılmamışsa veya auth hatası varsa anasayfayı göster
+  // Anasayfa her zaman HomePage'i gösterir, otomatik yönlendirme yapmaz
+  // Butonlar kullanıcının giriş durumuna göre dinamik olarak gösterilir
   return <HomePage />
 }
 
