@@ -5,7 +5,7 @@ export const authService = {
   // App başlangıcında kullanıcının giriş durumunu kontrol et
   initialize: async () => {
     try {
-      const response = await api.get('/auth/profile')
+      const response = await api.get('/auth/auth-status')
       
       // Eğer kullanıcı giriş yapmışsa CSRF token al
       if (response.data.user && !csrfTokenManager.hasToken()) {

@@ -129,8 +129,9 @@ api.interceptors.response.use(
         return Promise.reject(error)
       }
 
-      // Profile endpoint'inde 401 hatası varsa refresh token deneme (initialize işlemi için normal)
-      if (originalRequest.url?.includes('/auth/profile')) {
+      // Auth-status endpoint'inde 401 hatası varsa ve uygulama henüz initialize edilmemişse refresh token deneme
+      if (originalRequest.url?.includes('/auth/auth-status') && 
+          store && !store.getState().auth.initialized) {
         return Promise.reject(error)
       }
 

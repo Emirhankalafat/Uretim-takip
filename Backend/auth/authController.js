@@ -539,6 +539,27 @@ const getCsrfTokenEndpoint = async (req, res) => {
   }
 };
 
+// Basit authentication status kontrolü (initialize için)
+const getAuthStatus = (req, res) => {
+  try {
+    // Middleware'den gelen kullanıcı bilgilerini basit formatta döndür
+    res.status(200).json({
+      message: 'Authentication status başarıyla alındı.',
+      user: {
+        id: req.user.id,
+        Name: req.user.Name,
+        Mail: req.user.Mail,
+        company_id: req.user.company_id,
+        company_name: req.user.company_name,
+        is_SuperAdmin: req.user.is_SuperAdmin
+      }
+    });
+  } catch (error) {
+    console.error('Auth status getirme hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
 module.exports = {
   registerCompanyUser,
   confirmUser,
@@ -548,4 +569,5 @@ module.exports = {
   getUserProfile,
   getDashboardProfile,
   getCsrfTokenEndpoint,
+  getAuthStatus,
 };

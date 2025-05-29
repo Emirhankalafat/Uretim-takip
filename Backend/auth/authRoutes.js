@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { registerCompanyUser, confirmUser, loginUser, refreshAccessToken, logoutUser, getUserProfile, getDashboardProfile, getCsrfTokenEndpoint } = require('./authController');
+const { registerCompanyUser, confirmUser, loginUser, refreshAccessToken, logoutUser, getUserProfile, getDashboardProfile, getCsrfTokenEndpoint, getAuthStatus } = require('./authController');
 const { authenticateToken } = require('./middleware/authMiddleware');
 
 // POST /auth/register → yeni şirket + superadmin kullanıcı oluşturur
@@ -9,6 +9,7 @@ router.get('/confirm', confirmUser);
 router.post('/login', loginUser);
 router.post('/refresh-token', refreshAccessToken);
 router.post('/logout', logoutUser);
+router.get('/auth-status', authenticateToken, getAuthStatus);
 router.get('/profile', authenticateToken, getUserProfile);
 router.get('/dashboard-profile', authenticateToken, getDashboardProfile);
 router.get('/csrf-token', authenticateToken, getCsrfTokenEndpoint);
