@@ -129,6 +129,16 @@ api.interceptors.response.use(
         return Promise.reject(error)
       }
 
+      // Profile endpoint'inde 401 hatası varsa refresh token deneme (initialize işlemi için normal)
+      if (originalRequest.url?.includes('/auth/profile')) {
+        return Promise.reject(error)
+      }
+
+      // Confirm endpoint'inde 401 hatası varsa refresh token deneme (hesap doğrulama için normal)
+      if (originalRequest.url?.includes('/auth/confirm')) {
+        return Promise.reject(error)
+      }
+
       // Eğer refresh token endpoint'inde hata varsa direkt logout yap
       if (originalRequest.url?.includes('/refresh-token')) {
         if (store) {

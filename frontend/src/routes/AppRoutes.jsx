@@ -81,26 +81,6 @@ const PublicRoute = ({ children }) => {
   return children
 }
 
-// Home Route Component - Auth kontrolü var ama yönlendirme yok
-const HomeRoute = ({ children }) => {
-  const { initialized } = useSelector((state) => state.auth)
-  
-  // Henüz initialize edilmediyse bekle
-  if (!initialized) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Yükleniyor...</p>
-        </div>
-      </div>
-    )
-  }
-  
-  // Auth durumu ne olursa olsun anasayfayı göster
-  return children
-}
-
 const AppRoutes = () => {
   return (
     <Routes>
@@ -272,10 +252,14 @@ const AppRoutes = () => {
         } 
       />
       
-      {/* Home Route - Herkes için erişilebilir, otomatik yönlendirme yok */}
+      {/* Home Route - Auth varsa dashboard'a yönlendir, yoksa kalsın */}
       <Route 
         path="/" 
-        element={<HomeRoute><HomePage /></HomeRoute>}
+        element={
+          <PublicRoute>
+            <HomePage />
+          </PublicRoute>
+        }
       />
       
       {/* 404 Route */}
