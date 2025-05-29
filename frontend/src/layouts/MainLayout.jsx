@@ -30,6 +30,20 @@ const MainLayout = ({ children }) => {
     { name: 'Dashboard', href: '/dashboard', icon: '🏠', gradient: 'from-primary-500 to-primary-600' },
     { name: 'Yetkilerim', href: '/my-permissions', icon: '🔐', gradient: 'from-secondary-500 to-secondary-600' },
     { 
+      name: 'İşlerim', 
+      href: '/my-jobs', 
+      icon: '💼', 
+      requirePermission: 'MY_JOBS',
+      gradient: 'from-indigo-500 to-indigo-600'
+    },
+    { 
+      name: 'Siparişler', 
+      href: '/orders', 
+      icon: '📋', 
+      requirePermission: 'ORDER_READ',
+      gradient: 'from-emerald-500 to-emerald-600'
+    },
+    { 
       name: 'Kategoriler', 
       href: '/categories', 
       icon: '📂', 

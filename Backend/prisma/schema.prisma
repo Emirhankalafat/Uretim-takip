@@ -19,6 +19,8 @@ model Company {
   invites              Invite[]
   categories           Categories[]
   products             Products[]
+  customers            Customers[]
+  orders               Orders[]
 
   @@map("companies")
 }
@@ -40,6 +42,7 @@ model User {
   confirmTokens ConfirmToken[]
   refreshTokens RefreshToken[]
   responsibleSteps ProductSteps[]
+  orderSteps   OrderSteps[]
 
   @@map("users")
 }
@@ -125,6 +128,7 @@ model Products {
   category    Categories @relation(fields: [Category_id], references: [id])
   company     Company    @relation(fields: [Company_id], references: [id])
   steps       ProductSteps[]
+  orderSteps  OrderSteps[]
   
   @@map("products")
 }
@@ -144,4 +148,79 @@ model ProductSteps {
   
   @@map("product_steps")
   @@unique([Product_id, Step_number])
+}
+
+model Customers {
+  id          BigInt    @id @default(autoincrement())
+  Name        String
+  Company_Id  BigInt
+  Created_At  DateTime  @default(now())
+  
+  company     Company   @relation(fields: [Company_Id], references: [id])
+  orders      Orders[]
+  
+  @@map("customers")
+}
+
+model Orders {
+  id            BigInt      @id @default(autoincrement())
+  order_number  String      @unique
+  Customer_id   BigInt
+  Company_id    BigInt
+  status        OrderStatus @default(PENDING)
+  priority      Priority    @default(NORMAL)
+  deadline      DateTime?
+  notes         String?
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+  
+  customer      Customers   @relation(fields: [Customer_id], references: [id])
+  company       Company     @relation(fields: [Company_id], references: [id])
+  orderSteps    OrderSteps[]
+  
+  @@map("orders")
+}
+
+model OrderSteps {
+  id                BigInt      @id @default(autoincrement())
+  Order_id          BigInt
+  Product_id        BigInt
+  step_name         String
+  step_description  String?
+  step_number       Int
+  assigned_user     BigInt?
+  status            StepStatus  @default(WAITING)
+  started_at        DateTime?
+  completed_at      DateTime?
+  notes             String?
+  created_at        DateTime    @default(now())
+  updated_at        DateTime    @updatedAt
+  
+  order             Orders      @relation(fields: [Order_id], references: [id], onDelete: Cascade)
+  product           Products    @relation(fields: [Product_id], references: [id])
+  assignedUser      User?       @relation(fields: [assigned_user], references: [id])
+  
+  @@map("order_steps")
+  @@unique([Order_id, Product_id, step_number])
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum StepStatus {
+  WAITING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }

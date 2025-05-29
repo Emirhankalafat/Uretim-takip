@@ -13,6 +13,8 @@ import ProductsPage from '../features/products/pages/ProductsPage'
 import ProductStepsPage from '../features/product-steps/pages/ProductStepsPage'
 import ProductStepsTablePage from '../features/product-steps/pages/ProductStepsTablePage'
 import CustomersPage from '../features/customers/pages/CustomersPage'
+import OrdersPage from '../features/orders/pages/OrdersPage'
+import MyJobsPage from '../features/my-jobs/pages/MyJobsPage'
 import DashboardPage from '../pages/DashboardPage'
 import HomePage from '../pages/HomePage'
 import MainLayout from '../layouts/MainLayout'
@@ -232,6 +234,26 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <CustomersPage />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Orders Route */}
+      <Route 
+        path="/orders" 
+        element={
+          <ProtectedRoute>
+            <OrdersPage />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* My Jobs Route */}
+      <Route 
+        path="/my-jobs" 
+        element={
+          <ProtectedRoute>
+            <MyJobsPage />
           </ProtectedRoute>
         } 
       />
