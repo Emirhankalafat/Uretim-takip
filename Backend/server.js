@@ -1,7 +1,6 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const path = require('path');
 const app = express();
 const authRoutes = require('./auth/authRoutes');
 const permissionRoutes = require('./permission/permissionRoutes');
@@ -43,12 +42,6 @@ if (isProduction) {
 app.use(express.json()); // JSON body parse
 app.use(cookieParser()); // Cookie parse
 
-// Production modda statik dosyaları serve et
-if (isProduction) {
-  // Frontend build dosyalarını serve et
-  app.use(express.static(path.join(__dirname, '../frontend/dist')));
-}
-
 // Auth routes (CSRF koruması yok)
 app.use('/api/auth', authRoutes);
 
@@ -62,19 +55,9 @@ app.use('/api/customers', authenticateToken, csrfProtection, customerRoutes);
 app.use('/api/orders', authenticateToken, csrfProtection, orderRoutes);
 app.use('/api/my-jobs', authenticateToken, csrfProtection, myJobsRoutes);
 
-// Production modda tüm diğer route'ları React app'e yönlendir (SPA routing için)
-if (isProduction) {
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-  });
-}
-
 // Token yönetim scheduler'ını başlat
 // Sadece revoke et (önerilen)
 startTokenCleanupScheduler();
-
-// Alternatif: Eski token'ları da sil (30+ gün önceki revoke edilmiş token'lar)
-// startTokenCleanupScheduler({ deleteOldTokens: true, oldTokenDays: 30 });
 
 const PORT = process.env.PORT || 3001;
 
@@ -88,8 +71,8 @@ async function startServer() {
     app.listen(PORT, () => {
       console.log(`🚀 Server ${PORT} portunda çalışıyor.`);
       if (isProduction) {
-        console.log(`🌐 Production modda çalışıyor - Statik dosyalar serve ediliyor`);
-        console.log(`🔗 Uygulama: http://localhost:${PORT}`);
+        console.log(`🌐 Production modda çalışıyor - API Sunucusu`);
+        console.log(`🔗 API: http://localhost:${PORT}/api`);
       } else {
         console.log(`🌐 Development modda - CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
       }

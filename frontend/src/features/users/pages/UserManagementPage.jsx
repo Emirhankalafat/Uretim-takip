@@ -6,6 +6,179 @@ import usePermissions from '../../../hooks/usePermissions'
 import api from '../../../services/api'
 import Toast from '../../../components/Toast'
 
+// Yetki çevirileri ve açıklamaları
+const permissionTranslations = {
+  // Kullanıcı Yetkileri
+  'USER_READ': { 
+    name: 'Kullanıcı Görüntüleme', 
+    description: 'Kullanıcı listesini ve profillerini görüntüleyebilir' 
+  },
+  'USER_CREATE': { 
+    name: 'Kullanıcı Oluşturma', 
+    description: 'Yeni kullanıcı hesapları oluşturabilir' 
+  },
+  'USER_UPDATE': { 
+    name: 'Kullanıcı Güncelleme', 
+    description: 'Mevcut kullanıcı bilgilerini düzenleyebilir' 
+  },
+  'USER_DELETE': { 
+    name: 'Kullanıcı Silme', 
+    description: 'Kullanıcı hesaplarını silebilir' 
+  },
+  'USER_MANAGEMENT': { 
+    name: 'Kullanıcı Yönetimi', 
+    description: 'Tüm kullanıcı yönetimi işlemlerini yapabilir' 
+  },
+
+  // Müşteri Yetkileri
+  'CUSTOMER_READ': { 
+    name: 'Müşteri Görüntüleme', 
+    description: 'Müşteri listesini ve bilgilerini görüntüleyebilir' 
+  },
+  'CUSTOMER_CREATE': { 
+    name: 'Müşteri Oluşturma', 
+    description: 'Yeni müşteri kayıtları oluşturabilir' 
+  },
+  'CUSTOMER_UPDATE': { 
+    name: 'Müşteri Güncelleme', 
+    description: 'Mevcut müşteri bilgilerini düzenleyebilir' 
+  },
+  'CUSTOMER_DELETE': { 
+    name: 'Müşteri Silme', 
+    description: 'Müşteri kayıtlarını silebilir' 
+  },
+
+  // Ürün Yetkileri
+  'PRODUCT_READ': { 
+    name: 'Ürün Görüntüleme', 
+    description: 'Ürün listesini ve detaylarını görüntüleyebilir' 
+  },
+  'PRODUCT_CREATE': { 
+    name: 'Ürün Oluşturma', 
+    description: 'Yeni ürün kayıtları oluşturabilir' 
+  },
+  'PRODUCT_UPDATE': { 
+    name: 'Ürün Güncelleme', 
+    description: 'Mevcut ürün bilgilerini düzenleyebilir' 
+  },
+  'PRODUCT_DELETE': { 
+    name: 'Ürün Silme', 
+    description: 'Ürün kayıtlarını silebilir' 
+  },
+
+  // Ürün Adımları Yetkileri
+  'PRODUCT_STEP_READ': { 
+    name: 'Ürün Adımı Görüntüleme', 
+    description: 'Ürün üretim adımlarını görüntüleyebilir' 
+  },
+  'PRODUCT_STEP_CREATE': { 
+    name: 'Ürün Adımı Oluşturma', 
+    description: 'Yeni ürün adımları oluşturabilir' 
+  },
+  'PRODUCT_STEP_UPDATE': { 
+    name: 'Ürün Adımı Güncelleme', 
+    description: 'Mevcut ürün adımlarını düzenleyebilir' 
+  },
+  'PRODUCT_STEP_DELETE': { 
+    name: 'Ürün Adımı Silme', 
+    description: 'Ürün adımlarını silebilir' 
+  },
+
+  // Sipariş Yetkileri
+  'ORDER_READ': { 
+    name: 'Sipariş Görüntüleme', 
+    description: 'Sipariş listesini ve detaylarını görüntüleyebilir' 
+  },
+  'ORDER_CREATE': { 
+    name: 'Sipariş Oluşturma', 
+    description: 'Yeni siparişler oluşturabilir' 
+  },
+  'ORDER_UPDATE': { 
+    name: 'Sipariş Güncelleme', 
+    description: 'Mevcut sipariş bilgilerini düzenleyebilir' 
+  },
+  'ORDER_DELETE': { 
+    name: 'Sipariş Silme', 
+    description: 'Siparişleri silebilir' 
+  },
+
+  // Sipariş Adımları Yetkileri
+  'ORDER_STEP_READ': { 
+    name: 'Sipariş Adımı Görüntüleme', 
+    description: 'Sipariş adımlarını ve durumlarını görüntüleyebilir' 
+  },
+  'ORDER_STEP_UPDATE': { 
+    name: 'Sipariş Adımı Güncelleme', 
+    description: 'Sipariş adımlarını güncelleyebilir ve durum değiştirebilir' 
+  },
+
+  // Rapor Yetkileri
+  'REPORT_READ': { 
+    name: 'Rapor Görüntüleme', 
+    description: 'Sistem raporlarını görüntüleyebilir' 
+  },
+  'REPORT_CREATE': { 
+    name: 'Rapor Oluşturma', 
+    description: 'Yeni raporlar oluşturabilir' 
+  },
+
+  // Sistem Yetkileri
+  'SYSTEM_SETTINGS': { 
+    name: 'Sistem Ayarları', 
+    description: 'Sistem genelindeki ayarları yönetebilir' 
+  },
+  'COMPANY_SETTINGS': { 
+    name: 'Şirket Ayarları', 
+    description: 'Şirket bilgilerini ve ayarlarını düzenleyebilir' 
+  },
+
+  // Admin Yetkileri
+  'ADMIN_PANEL': { 
+    name: 'Admin Paneli', 
+    description: 'Yönetici paneline erişebilir' 
+  },
+  'PERMISSION_MANAGEMENT': { 
+    name: 'Yetki Yönetimi', 
+    description: 'Kullanıcı yetkilerini yönetebilir' 
+  },
+
+  // İşlerim (MyJobs) Yetkileri
+  'MYJOBS_READ': { 
+    name: 'İşlerimi Görüntüleme', 
+    description: 'Kendine atanan görevleri ve işleri görüntüleyebilir' 
+  },
+  'MYJOBS_UPDATE': { 
+    name: 'İşlerimi Güncelleme', 
+    description: 'Atanan görevlerin durumunu güncelleyebilir ve tamamlayabilir' 
+  },
+
+  // Kategori Yetkileri
+  'CATEGORY_READ': { 
+    name: 'Kategori Görüntüleme', 
+    description: 'Kategori listesini ve detaylarını görüntüleyebilir' 
+  },
+  'CATEGORY_CREATE': { 
+    name: 'Kategori Oluşturma', 
+    description: 'Yeni kategori kayıtları oluşturabilir' 
+  },
+  'CATEGORY_UPDATE': { 
+    name: 'Kategori Güncelleme', 
+    description: 'Mevcut kategori bilgilerini düzenleyebilir' 
+  },
+  'CATEGORY_DELETE': { 
+    name: 'Kategori Silme', 
+    description: 'Kategori kayıtlarını silebilir' 
+  }
+}
+
+// Yetki çevirisi fonksiyonu
+const getPermissionTranslation = (permissionName) => {
+  return permissionTranslations[permissionName] || {
+    name: permissionName,
+    description: 'Bu yetki için açıklama bulunmuyor'
+  }
+}
+
 const UserManagementPage = () => {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -374,13 +547,14 @@ const UserManagementPage = () => {
                       <div className="grid grid-cols-1 gap-2">
                         {permissions.map((permission) => {
                           const isChecked = localPermissions.includes(permission.id)
+                          const translation = getPermissionTranslation(permission.Name)
                           
                           // Yetki kontrolü
                           const canModify = currentUser?.is_SuperAdmin || 
                             (permission.Name !== 'USER_MANAGEMENT' && !selectedUser.is_SuperAdmin)
                           
                           return (
-                            <label key={permission.id} className={`flex items-center space-x-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                            <label key={permission.id} className={`flex items-start space-x-3 p-4 rounded-lg border transition-all cursor-pointer ${
                               isChecked 
                                 ? 'bg-primary-50 border-primary-200' 
                                 : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
@@ -390,12 +564,12 @@ const UserManagementPage = () => {
                                 checked={isChecked}
                                 onChange={(e) => canModify && handlePermissionChange(permission.id, e.target.checked)}
                                 disabled={!canModify}
-                                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mt-1"
                               />
                               <div className="flex-1">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-medium text-gray-900">
-                                    {permission.Name}
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-semibold text-gray-900">
+                                    {translation.name}
                                   </span>
                                   <span className={`text-xs px-2 py-1 rounded-full ${
                                     isChecked 
@@ -405,11 +579,19 @@ const UserManagementPage = () => {
                                     {isChecked ? '✓ Aktif' : '✗ Pasif'}
                                   </span>
                                 </div>
-                                {!canModify && (
-                                  <span className="text-xs text-red-600">
-                                    {permission.Name === 'USER_MANAGEMENT' ? 'Sadece SuperAdmin değiştirebilir' : 'Değiştirilemez'}
+                                <p className="text-sm text-gray-600 mb-2">
+                                  {translation.description}
+                                </p>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-gray-400 font-mono">
+                                    {permission.Name}
                                   </span>
-                                )}
+                                  {!canModify && (
+                                    <span className="text-xs text-red-600 font-medium">
+                                      {permission.Name === 'USER_MANAGEMENT' ? '🔒 Sadece SuperAdmin' : '🚫 Değiştirilemez'}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </label>
                           )

@@ -9,13 +9,20 @@ import Toast from '../../../components/Toast'
 const LoginPage = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
-  const { loading, error } = useSelector((state) => state.auth)
+  const { loading, error, isAuthenticated } = useSelector((state) => state.auth)
   const [toast, setToast] = useState({ show: false, type: '', message: '' })
 
   // Sayfa yüklendiğinde loading state'ini temizle
   useEffect(() => {
     dispatch(clearLoading())
   }, [])
+
+  // Eğer kullanıcı zaten giriş yapmışsa dashboard'a yönlendir
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [isAuthenticated, navigate])
   
   const {
     register,

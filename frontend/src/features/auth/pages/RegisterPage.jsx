@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
@@ -9,7 +9,7 @@ import Toast from '../../../components/Toast'
 const RegisterPage = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
-  const { loading, error } = useSelector((state) => state.auth)
+  const { loading, error, isAuthenticated } = useSelector((state) => state.auth)
   const [toast, setToast] = useState({ show: false, type: '', message: '' })
   
   const {
@@ -20,6 +20,13 @@ const RegisterPage = () => {
   } = useForm()
 
   const password = watch('password')
+
+  // Eğer kullanıcı zaten giriş yapmışsa dashboard'a yönlendir
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [isAuthenticated, navigate])
 
   const onSubmit = async (data) => {
     try {
