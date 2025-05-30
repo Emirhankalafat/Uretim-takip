@@ -58,12 +58,12 @@ const AdminRoute = ({ children }) => {
   return <MainLayout>{children}</MainLayout>
 }
 
-// Public Route Component - Auth varsa dashboard'a yönlendir
+// Public Route Component - AuthInitializer ile koordineli çalışır
 const PublicRoute = ({ children }) => {
-  const { isAuthenticated, initialized } = useSelector((state) => state.auth)
+  const { initialized, loading } = useSelector((state) => state.auth)
   
-  // Henüz initialize edilmediyse bekle
-  if (!initialized) {
+  // Henüz initialize edilmediyse bekle (AuthInitializer çalışıyor)
+  if (!initialized && loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -74,10 +74,8 @@ const PublicRoute = ({ children }) => {
     )
   }
   
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
-  }
-  
+  // AuthInitializer zaten gerekli yönlendirmeleri yapıyor
+  // Buraya geldiyse sayfayı gösterebiliriz
   return children
 }
 

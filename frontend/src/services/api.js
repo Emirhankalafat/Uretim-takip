@@ -129,10 +129,23 @@ api.interceptors.response.use(
         return Promise.reject(error)
       }
 
-      // Auth-status endpoint'inde 401 hatası varsa ve uygulama henüz initialize edilmemişse refresh token deneme
-      if (originalRequest.url?.includes('/auth/auth-status') && 
-          store && !store.getState().auth.initialized) {
-        return Promise.reject(error)
+      // Auth-status endpoint'inde 401 hatası varsa özel kontrol
+      if (originalRequest.url?.includes('/auth/auth-status')) {
+        // Public sayfalarda auth-status 401 hatası normaldir, refresh token deneme
+        const publicPaths = ['/', '/login', '/register', '/auth/confirm', '/confirm', '/auth/accept-invite', '/auth/invite-success']
+        const currentPath = window.location.pathname
+        const isPublicPage = publicPaths.includes(currentPath)
+        
+        if (isPublicPage) {
+          console.log(`🔓 Public sayfada auth-status 401 hatası: ${currentPath} - Refresh token denenmeyecek`)
+          return Promise.reject(error)
+        }
+        
+        // Initialize edilmemişse de refresh token deneme
+        if (store && !store.getState().auth.initialized) {
+          console.log('🔓 App henüz initialize edilmemiş, auth-status 401 hatası normal - Refresh token denenmeyecek')
+          return Promise.reject(error)
+        }
       }
 
       // Confirm endpoint'inde 401 hatası varsa refresh token deneme (hesap doğrulama için normal)
