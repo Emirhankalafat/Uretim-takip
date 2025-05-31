@@ -13,6 +13,18 @@ import { setApiStore } from './services/api'
 // Store'u API'ye set et
 setApiStore(store)
 
+// Loading Component
+const LoadingScreen = ({ message = "Yükleniyor..." }) => {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">{message}</p>
+      </div>
+    </div>
+  )
+}
+
 // Auth Initialize Component
 const AuthInitializer = ({ children }) => {
   const dispatch = useDispatch()
@@ -80,7 +92,11 @@ const AuthInitializer = ({ children }) => {
       dispatch(initializeStart())
       try {
         const userData = await authService.initialize()
-        dispatch(initializeSuccess(userData))
+        if (userData && userData.user) {
+          dispatch(initializeSuccess(userData))
+        } else {
+          dispatch(initializeFailure())
+        }
       } catch (error) {
         console.log('❌ Protected sayfa auth başarısız, kullanıcı giriş yapmamış')
         dispatch(initializeFailure())
@@ -93,15 +109,13 @@ const AuthInitializer = ({ children }) => {
   }, [dispatch, initialized, location.pathname, navigate])
 
   // Auth initialize edilene kadar loading göster
-  if (!initialized && loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Yükleniyor...</p>
-        </div>
-      </div>
-    )
+  if (!initialized) {
+    if (loading) {
+      return <LoadingScreen message="Kimlik doğrulanıyor..." />
+    } else {
+      // Loading false ama initialized false ise bekle
+      return <LoadingScreen message="Başlatılıyor..." />
+    }
   }
 
   return children

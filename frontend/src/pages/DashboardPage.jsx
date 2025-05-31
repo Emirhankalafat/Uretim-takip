@@ -6,7 +6,8 @@ import api from '../services/api'
 const DashboardPage = () => {
   const { user } = useSelector((state) => state.auth)
   const [profileData, setProfileData] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   // Dashboard profil verilerini al
   useEffect(() => {
@@ -16,13 +17,49 @@ const DashboardPage = () => {
   const fetchDashboardProfile = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/auth/dashboard-profile')
-      setProfileData(response.data.profile)
+      setError(null)
+      // Kullanıcı bilgisi varsa profil verilerini çek
+      if (user) {
+        const response = await api.get('/auth/dashboard-profile')
+        setProfileData(response.data.profile)
+      }
     } catch (error) {
       console.error('Dashboard profil verileri alınamadı:', error)
+      setError('Dashboard verileri yüklenirken bir hata oluştu.')
     } finally {
       setLoading(false)
     }
+  }
+
+  // Loading durumunda
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Dashboard yükleniyor...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Hata durumunda
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Bir hata oluştu</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={fetchDashboardProfile}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+          >
+            Tekrar Dene
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // Trial süresi hesaplama

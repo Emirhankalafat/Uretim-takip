@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useMyJobs } from '../hooks/useMyJobs'
 import Toast from '../../../components/Toast'
 
@@ -15,6 +15,8 @@ const MyJobsPage = () => {
   const [toast, setToast] = useState(null)
   const [activeTab, setActiveTab] = useState('current')
   const [notes, setNotes] = useState('')
+  const [isInitialized, setIsInitialized] = useState(false)
+  const hasFetched = useRef(false) // Duplicate request'leri engellemek için
 
   const {
     loading,
@@ -29,9 +31,17 @@ const MyJobsPage = () => {
   } = useMyJobs()
 
   useEffect(() => {
-    if (canViewMyJobs) {
-      loadMyJobs()
+    const initializeJobs = async () => {
+      if (canViewMyJobs && !hasFetched.current) {
+        hasFetched.current = true
+        await loadMyJobs()
+        setIsInitialized(true)
+      } else if (!canViewMyJobs) {
+        setIsInitialized(true)
+      }
     }
+
+    initializeJobs()
   }, [canViewMyJobs])
 
   const loadMyJobs = async () => {
@@ -115,23 +125,46 @@ const MyJobsPage = () => {
     { key: 'completed', label: 'Tamamlanan', count: summary.completed || 0, color: 'text-gray-600' }
   ]
 
-  if (!canViewMyJobs) {
+  if (isInitialized && !canViewMyJobs) {
     return (
-      <div className="animate-fade-in">
-        <div className="bg-gradient-to-r from-danger-50 to-danger-100 border border-danger-200 rounded-xl p-6 shadow-soft">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-10 h-10 bg-gradient-to-r from-danger-500 to-danger-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-lg">⚠️</span>
-              </div>
-            </div>
-            <div className="ml-4">
-              <h3 className="text-lg font-semibold text-danger-800">Erişim Reddedildi</h3>
-              <p className="mt-1 text-sm text-danger-700">
-                Bu sayfayı görüntülemek için gerekli yetkiniz bulunmamaktadır.
-              </p>
-            </div>
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-6xl mb-4">🚫</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Erişim Reddedildi</h2>
+          <p className="text-gray-600">Bu sayfayı görüntülemek için gerekli yetkiniz bulunmuyor.</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isInitialized || loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">İşler yükleniyor...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Bir hata oluştu</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => {
+              setError(null)
+              hasFetched.current = false
+              loadMyJobs()
+            }}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+          >
+            Tekrar Dene
+          </button>
         </div>
       </div>
     )
@@ -360,15 +393,6 @@ const MyJobsPage = () => {
           type={toast.type}
           message={toast.message}
           onClose={() => setToast(null)}
-        />
-      )}
-
-      {/* Error */}
-      {error && (
-        <Toast
-          type="error"
-          message={error}
-          onClose={() => setError(null)}
         />
       )}
     </div>

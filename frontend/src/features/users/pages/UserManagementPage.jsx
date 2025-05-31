@@ -200,6 +200,7 @@ const UserManagementPage = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true)
+      setError(null)
       const response = await userService.getAllUsers()
       const usersWithPermissionCount = (response.data?.users || []).map(user => ({
         ...user,
@@ -227,13 +228,13 @@ const UserManagementPage = () => {
   const fetchUserPermissions = async (userId) => {
     try {
       setPermissionLoading(true)
-      const response = await api.get(`/permissions/user/${userId}`)
-      const permissions = response.data.data.permissions || []
-      setUserPermissions(permissions)
-      setLocalPermissions(permissions.map(p => p.id))
+      const response = await api.get(`/permissions/user/${userId}/permissions`)
+      const userPerms = response.data.data.permissions || []
+      setUserPermissions(userPerms)
+      setLocalPermissions(userPerms.map(p => p.id))
       setHasChanges(false)
     } catch (error) {
-      console.error('Kullanıcı yetkileri yüklenirken hata:', error)
+      console.error('Kullanıcı yetkileri alınırken hata:', error)
       setUserPermissions([])
       setLocalPermissions([])
     } finally {
@@ -243,8 +244,8 @@ const UserManagementPage = () => {
 
   const selectUser = async (user) => {
     if (hasChanges) {
-      const confirm = window.confirm('Kaydedilmemiş değişiklikleriniz var. Devam etmek istediğinizden emin misiniz?')
-      if (!confirm) return
+      const shouldDiscard = confirm('Kaydedilmemiş değişiklikler var. Devam etmek istediğinize emin misiniz?')
+      if (!shouldDiscard) return
     }
     
     setSelectedUser(user)
@@ -252,16 +253,10 @@ const UserManagementPage = () => {
   }
 
   const clearSelection = () => {
-    if (hasChanges) {
-      const confirm = window.confirm('Kaydedilmemiş değişiklikleriniz var. Devam etmek istediğinizden emin misiniz?')
-      if (!confirm) return
-    }
-    
     setSelectedUser(null)
     setUserPermissions([])
     setLocalPermissions([])
     setHasChanges(false)
-    setError(null)
   }
 
   // READ yetkisini otomatik işaretleme fonksiyonu
@@ -394,6 +389,24 @@ const UserManagementPage = () => {
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Kullanıcılar yükleniyor...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Bir hata oluştu</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={fetchUsers}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+          >
+            Tekrar Dene
+          </button>
         </div>
       </div>
     )
@@ -612,15 +625,6 @@ const UserManagementPage = () => {
           type={toast.type}
           message={toast.message}
           onClose={() => setToast(null)}
-        />
-      )}
-
-      {/* Error */}
-      {error && (
-        <Toast
-          type="error"
-          message={error}
-          onClose={() => setError(null)}
         />
       )}
     </div>

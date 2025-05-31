@@ -1,53 +1,74 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import LoginPage from '../features/auth/pages/LoginPage'
-import RegisterPage from '../features/auth/pages/RegisterPage'
-import MyPermissionsPage from '../features/auth/pages/MyPermissionsPage'
-import ConfirmPage from '../features/auth/pages/ConfirmPage'
-import AcceptInvitePage from '../features/auth/pages/AcceptInvitePage'
-import InviteSuccessPage from '../features/auth/pages/InviteSuccessPage'
-import ForgotPasswordPage from '../features/auth/pages/ForgotPasswordPage'
-import ResetPasswordPage from '../features/auth/pages/ResetPasswordPage'
-import UserManagementPage from '../features/users/pages/UserManagementPage'
-import UserInvitePage from '../features/users/pages/UserInvitePage'
-import CategoriesPage from '../features/categories/pages/CategoriesPage'
-import ProductsPage from '../features/products/pages/ProductsPage'
-import ProductStepsPage from '../features/product-steps/pages/ProductStepsPage'
-import ProductStepsTablePage from '../features/product-steps/pages/ProductStepsTablePage'
-import CustomersPage from '../features/customers/pages/CustomersPage'
-import OrdersPage from '../features/orders/pages/OrdersPage'
-import OrderDetailPage from '../features/orders/pages/OrderDetailPage'
-import MyJobsPage from '../features/my-jobs/pages/MyJobsPage'
-import DashboardPage from '../pages/DashboardPage'
-import HomePage from '../pages/HomePage'
+import { Suspense, lazy } from 'react'
+
+// Layout
 import MainLayout from '../layouts/MainLayout'
+
+// Public Pages
+const HomePage = lazy(() => import('../pages/HomePage'))
+const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'))
+const RegisterPage = lazy(() => import('../features/auth/pages/RegisterPage'))
+const ConfirmPage = lazy(() => import('../features/auth/pages/ConfirmPage'))
+const AcceptInvitePage = lazy(() => import('../features/auth/pages/AcceptInvitePage'))
+const InviteSuccessPage = lazy(() => import('../features/auth/pages/InviteSuccessPage'))
+const ForgotPasswordPage = lazy(() => import('../features/auth/pages/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('../features/auth/pages/ResetPasswordPage'))
+
+// Protected Pages
+const DashboardPage = lazy(() => import('../pages/DashboardPage'))
+const MyPermissionsPage = lazy(() => import('../features/auth/pages/MyPermissionsPage'))
+const UserManagementPage = lazy(() => import('../features/users/pages/UserManagementPage'))
+const UserInvitePage = lazy(() => import('../features/users/pages/UserInvitePage'))
+const CategoriesPage = lazy(() => import('../features/categories/pages/CategoriesPage'))
+const ProductsPage = lazy(() => import('../features/products/pages/ProductsPage'))
+const ProductStepsPage = lazy(() => import('../features/product-steps/pages/ProductStepsPage'))
+const ProductStepsTablePage = lazy(() => import('../features/product-steps/pages/ProductStepsTablePage'))
+const CustomersPage = lazy(() => import('../features/customers/pages/CustomersPage'))
+const OrdersPage = lazy(() => import('../features/orders/pages/OrdersPage'))
+const OrderDetailPage = lazy(() => import('../features/orders/pages/OrderDetailPage'))
+const MyJobsPage = lazy(() => import('../features/my-jobs/pages/MyJobsPage'))
+
+// Loading Component
+const LoadingScreen = ({ message = "Sayfa yükleniyor..." }) => {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">{message}</p>
+      </div>
+    </div>
+  )
+}
 
 // Protected Route Component - Auth gerekli, yoksa login'e yönlendir
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, initialized } = useSelector((state) => state.auth)
+  const { isAuthenticated, initialized, loading } = useSelector((state) => state.auth)
   
   // Henüz initialize edilmediyse bekle
   if (!initialized) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Yükleniyor...</p>
-        </div>
-      </div>
-    )
+    return <LoadingScreen message="Kimlik doğrulanıyor..." />
   }
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
   
-  return <MainLayout>{children}</MainLayout>
+  return (
+    <Suspense fallback={<LoadingScreen message="Sayfa yükleniyor..." />}>
+      <MainLayout>{children}</MainLayout>
+    </Suspense>
+  )
 }
 
 // Admin Route Component
 const AdminRoute = ({ children }) => {
-  const { isAuthenticated, user } = useSelector((state) => state.auth)
+  const { isAuthenticated, user, initialized } = useSelector((state) => state.auth)
+  
+  // Henüz initialize edilmediyse bekle
+  if (!initialized) {
+    return <LoadingScreen message="Kimlik doğrulanıyor..." />
+  }
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
@@ -57,28 +78,24 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/dashboard" replace />
   }
   
-  return <MainLayout>{children}</MainLayout>
+  return (
+    <Suspense fallback={<LoadingScreen message="Sayfa yükleniyor..." />}>
+      <MainLayout>{children}</MainLayout>
+    </Suspense>
+  )
 }
 
 // Public Route Component - AuthInitializer ile koordineli çalışır
 const PublicRoute = ({ children }) => {
-  const { initialized, loading } = useSelector((state) => state.auth)
+  const { initialized } = useSelector((state) => state.auth)
   
-  // Henüz initialize edilmediyse bekle (AuthInitializer çalışıyor)
-  if (!initialized && loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Yükleniyor...</p>
-        </div>
-      </div>
-    )
-  }
-  
-  // AuthInitializer zaten gerekli yönlendirmeleri yapıyor
+  // AuthInitializer zaten tüm kontrolü yapıyor
   // Buraya geldiyse sayfayı gösterebiliriz
-  return children
+  return (
+    <Suspense fallback={<LoadingScreen message="Sayfa yükleniyor..." />}>
+      {children}
+    </Suspense>
+  )
 }
 
 const AppRoutes = () => {
