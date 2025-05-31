@@ -154,6 +154,94 @@ async function deleteOldRevokedTokens(daysOld = 30) {
   });
 }
 
+// Password reset token oluşturma
+async function createPasswordResetToken(userId) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 saat
+
+  try {
+    // Kullanıcının önceki reset token'larını sil
+    await prisma.passwordResetToken.deleteMany({
+      where: {
+        user_id: BigInt(userId),
+      },
+    });
+
+    // Yeni token oluştur
+    await prisma.passwordResetToken.create({
+      data: {
+        user_id: BigInt(userId),
+        token,
+        expiresAt,
+      },
+    });
+    
+    console.log('Password reset token başarıyla oluşturuldu:', token);
+    return token;
+  } catch (error) {
+    console.error('Password reset token oluşturma hatası:', error);
+    throw error;
+  }
+}
+
+// Password reset token doğrulama
+async function verifyPasswordResetToken(token) {
+  try {
+    const tokenRecord = await prisma.passwordResetToken.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+
+    if (!tokenRecord) {
+      return { valid: false, message: 'Geçersiz token' };
+    }
+
+    if (tokenRecord.used) {
+      return { valid: false, message: 'Token zaten kullanılmış' };
+    }
+
+    if (tokenRecord.expiresAt < new Date()) {
+      return { valid: false, message: 'Token süresi dolmuş' };
+    }
+
+    return { valid: true, user: tokenRecord.user, tokenId: tokenRecord.id };
+  } catch (error) {
+    console.error('Password reset token doğrulama hatası:', error);
+    return { valid: false, message: 'Sunucu hatası' };
+  }
+}
+
+// Password reset token'ı kullanılmış olarak işaretle
+async function markPasswordResetTokenAsUsed(tokenId) {
+  try {
+    await prisma.passwordResetToken.update({
+      where: { id: BigInt(tokenId) },
+      data: { used: true },
+    });
+    return true;
+  } catch (error) {
+    console.error('Password reset token güncelleme hatası:', error);
+    return false;
+  }
+}
+
+// Süresi dolmuş password reset token'ları temizle
+async function cleanupExpiredPasswordResetTokens() {
+  try {
+    const result = await prisma.passwordResetToken.deleteMany({
+      where: {
+        expiresAt: { lt: new Date() }
+      }
+    });
+    
+    console.log(`${result.count} süresi dolmuş password reset token silindi`);
+    return result.count;
+  } catch (error) {
+    console.error('Süresi dolmuş token temizleme hatası:', error);
+    return 0;
+  }
+}
+
 module.exports = { 
   createConfirmToken, 
   createJWTToken, 
@@ -165,5 +253,9 @@ module.exports = {
   revokeRefreshToken,
   revokeAllUserRefreshTokens,
   revokeExpiredTokens,
-  deleteOldRevokedTokens
+  deleteOldRevokedTokens,
+  createPasswordResetToken,
+  verifyPasswordResetToken,
+  markPasswordResetTokenAsUsed,
+  cleanupExpiredPasswordResetTokens
 };

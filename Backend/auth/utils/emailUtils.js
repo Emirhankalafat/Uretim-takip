@@ -334,8 +334,132 @@ const sendInviteEmail = async (userEmail, companyName, inviteToken) => {
   }
 };
 
+// Password reset email gönder
+const sendPasswordResetEmail = async (userEmail, userName, resetToken) => {
+  try {
+    const transporter = createTransporter();
+    
+    if (!transporter) {
+      console.warn('Email transporter oluşturulamadı. Email ayarları kontrol edin.');
+      return false;
+    }
+    
+    const baseUrl = getBaseUrl();
+    const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+    const colors = getThemeColors();
+    const environmentBadge = getEnvironmentBadge();
+    
+    // Environment'a göre özel mesajlar
+    const environmentMessage = isDevelopment 
+      ? `
+        <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 24px 0;">
+          <p style="color: #92400e; font-size: 14px; margin: 0; display: flex; align-items: center;">
+            <span style="margin-right: 8px;">🔧</span>
+            <strong>Development Ortamı:</strong> Bu email test amaçlıdır. Gerçek üretim sistemi değildir.
+          </p>
+        </div>
+      `
+      : '';
+
+    const subject = isDevelopment 
+      ? '[DEV] Şifre Sıfırlama - Üretim Takip Sistemi'
+      : 'Şifre Sıfırlama - Üretim Takip Sistemi';
+    
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: userEmail,
+      subject: subject,
+      html: `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: ${colors.bgGradient}; padding: 40px 20px; border-radius: 20px;">
+          <div style="background: white; padding: 40px; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+            <div style="text-align: center; margin-bottom: 30px;">
+              ${environmentBadge}
+              <div style="width: 64px; height: 64px; background: ${colors.gradient}; border-radius: 16px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                <svg width="32" height="32" fill="white" viewBox="0 0 24 24">
+                  <path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                </svg>
+              </div>
+              <h1 style="color: #1f2937; font-size: 28px; font-weight: bold; margin: 0;">Şifre Sıfırlama</h1>
+              <p style="color: #6b7280; font-size: 16px; margin: 10px 0 0;">Üretim Takip Sistemi</p>
+              ${isDevelopment ? '<p style="color: #ef4444; font-size: 12px; font-weight: 600;">DEVELOPMENT ENVIRONMENT</p>' : ''}
+            </div>
+            
+            ${environmentMessage}
+            
+            <div style="background: #fef2f2; border: 1px solid #fca5a5; padding: 24px; border-radius: 12px; margin: 24px 0;">
+              <h3 style="color: #991b1b; font-size: 18px; font-weight: 600; margin: 0 0 12px;">
+                🔒 Merhaba ${userName}
+              </h3>
+              <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0;">
+                Hesabınız için şifre sıfırlama talebinde bulundunuz. Yeni şifrenizi belirlemek için aşağıdaki butona tıklayın.
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin: 32px 0;">
+              <a href="${resetUrl}" 
+                 style="background: ${colors.gradient}; color: white; padding: 16px 32px; 
+                        text-decoration: none; border-radius: 12px; display: inline-block; font-weight: 600; 
+                        font-size: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: all 0.2s;">
+                🔑 Şifremi Sıfırla
+              </a>
+            </div>
+            
+            <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 24px 0;">
+              <p style="color: #92400e; font-size: 14px; margin: 0; display: flex; align-items: center;">
+                <span style="margin-right: 8px;">⚠️</span>
+                Bu şifre sıfırlama linki 1 saat geçerlidir. Eğer bu işlemi siz yapmadıysanız, hesabınızın güvenliği için destek ekibimizle iletişime geçin.
+              </p>
+            </div>
+            
+            <div style="background: #f0f9ff; border: 1px solid #0ea5e9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+              <h4 style="color: #0c4a6e; font-size: 16px; font-weight: 600; margin: 0 0 12px;">Güvenlik İpuçları:</h4>
+              <ul style="color: #6b7280; font-size: 14px; margin: 0; padding-left: 20px;">
+                <li style="margin-bottom: 8px;">Güçlü bir şifre seçin (en az 8 karakter)</li>
+                <li style="margin-bottom: 8px;">Büyük-küçük harf, sayı ve özel karakter kullanın</li>
+                <li style="margin-bottom: 8px;">Şifrenizi kimseyle paylaşmayın</li>
+                <li>Düzenli olarak şifrenizi güncelleyin</li>
+              </ul>
+            </div>
+            
+            ${isDevelopment ? `
+              <div style="background: #f3f4f6; border: 1px solid #d1d5db; padding: 16px; border-radius: 8px; margin: 24px 0;">
+                <p style="color: #6b7280; font-size: 12px; margin: 0;">
+                  <strong>Development Info:</strong><br>
+                  Base URL: ${baseUrl}<br>
+                  Environment: ${process.env.NODE_ENV}<br>
+                  Token: ${resetToken}
+                </p>
+              </div>
+            ` : ''}
+            
+            <hr style="margin: 32px 0; border: none; border-top: 1px solid #e5e7eb;">
+            
+            <div style="text-align: center;">
+              <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                Bu email otomatik olarak gönderilmiştir. Lütfen yanıtlamayın.
+              </p>
+              <p style="color: #9ca3af; font-size: 12px; margin: 8px 0 0;">
+                © 2024 Üretim Takip Sistemi. Tüm hakları saklıdır.
+              </p>
+              ${isDevelopment ? '<p style="color: #ef4444; font-size: 10px; margin: 4px 0 0;">Development Environment - Test Email</p>' : ''}
+            </div>
+          </div>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`Password reset email gönderildi [${process.env.NODE_ENV?.toUpperCase()}]:`, userEmail);
+    return true;
+  } catch (error) {
+    console.error('Password reset email gönderme hatası:', error);
+    return false;
+  }
+};
+
 module.exports = {
   sendConfirmEmail,
   sendInviteEmail,
+  sendPasswordResetEmail,
   isEmailConfigured
 }; 

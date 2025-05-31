@@ -9,9 +9,12 @@ const {
   saveRefreshToken,
   verifyRefreshToken,
   revokeRefreshToken,
-  revokeAllUserRefreshTokens
+  revokeAllUserRefreshTokens,
+  createPasswordResetToken,
+  verifyPasswordResetToken,
+  markPasswordResetTokenAsUsed
 } = require('./utils/tokenUtils');
-const { sendConfirmEmail } = require('./utils/emailUtils');
+const { sendConfirmEmail, sendPasswordResetEmail } = require('./utils/emailUtils');
 const { 
   createCsrfToken, 
   deleteCsrfToken, 
@@ -560,6 +563,135 @@ const getAuthStatus = (req, res) => {
   }
 };
 
+// Şifre sıfırlama talebi
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'E-posta adresi gereklidir.' });
+    }
+
+    // Kullanıcıyı bul
+    const user = await prisma.user.findUnique({
+      where: { Mail: email },
+    });
+
+    // Güvenlik sebebiyle, kullanıcı bulunamasa bile başarılı mesajı döndür
+    if (!user) {
+      return res.status(200).json({ 
+        message: 'Eğer bu e-posta adresine kayıtlı bir hesap varsa, şifre sıfırlama linki gönderildi.' 
+      });
+    }
+
+    // Kullanıcı aktif mi kontrol et
+    if (!user.is_active) {
+      return res.status(200).json({ 
+        message: 'Eğer bu e-posta adresine kayıtlı bir hesap varsa, şifre sıfırlama linki gönderildi.' 
+      });
+    }
+
+    // Reset token oluştur
+    const resetToken = await createPasswordResetToken(user.id);
+
+    // Email gönder
+    const emailSent = await sendPasswordResetEmail(user.Mail, user.Name, resetToken);
+    
+    if (!emailSent) {
+      console.warn('Password reset email gönderilemedi:', user.Mail);
+      return res.status(500).json({ 
+        message: 'Email gönderilirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.' 
+      });
+    }
+
+    res.status(200).json({
+      message: 'Eğer bu e-posta adresine kayıtlı bir hesap varsa, şifre sıfırlama linki gönderildi.',
+      email_sent: emailSent
+    });
+
+  } catch (error) {
+    console.error('Forgot password hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
+// Şifre sıfırlama token'ını doğrula
+const verifyResetToken = async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({ message: 'Reset token gereklidir.' });
+    }
+
+    const verification = await verifyPasswordResetToken(token);
+
+    if (!verification.valid) {
+      return res.status(400).json({ message: verification.message });
+    }
+
+    res.status(200).json({
+      message: 'Token geçerli.',
+      user: {
+        id: Number(verification.user.id),
+        name: verification.user.Name,
+        email: verification.user.Mail
+      }
+    });
+
+  } catch (error) {
+    console.error('Token doğrulama hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
+// Şifre sıfırlama
+const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: 'Token ve yeni şifre gereklidir.' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Şifre en az 6 karakter olmalıdır.' });
+    }
+
+    // Token'ı doğrula
+    const verification = await verifyPasswordResetToken(token);
+
+    if (!verification.valid) {
+      return res.status(400).json({ message: verification.message });
+    }
+
+    // Şifreyi hash'le
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Kullanıcının şifresini güncelle
+    await prisma.user.update({
+      where: { id: verification.user.id },
+      data: { password: hashedPassword },
+    });
+
+    // Token'ı kullanılmış olarak işaretle
+    await markPasswordResetTokenAsUsed(verification.tokenId);
+
+    // Kullanıcının tüm refresh token'larını geçersiz kıl (güvenlik için)
+    await revokeAllUserRefreshTokens(verification.user.id);
+
+    console.log('Password reset successful for user:', verification.user.Mail);
+
+    res.status(200).json({
+      message: 'Şifreniz başarıyla sıfırlandı. Artık yeni şifrenizle giriş yapabilirsiniz.',
+    });
+
+  } catch (error) {
+    console.error('Reset password hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
 module.exports = {
   registerCompanyUser,
   confirmUser,
@@ -570,4 +702,7 @@ module.exports = {
   getDashboardProfile,
   getCsrfTokenEndpoint,
   getAuthStatus,
+  forgotPassword,
+  verifyResetToken,
+  resetPassword,
 };

@@ -6,6 +6,8 @@ import MyPermissionsPage from '../features/auth/pages/MyPermissionsPage'
 import ConfirmPage from '../features/auth/pages/ConfirmPage'
 import AcceptInvitePage from '../features/auth/pages/AcceptInvitePage'
 import InviteSuccessPage from '../features/auth/pages/InviteSuccessPage'
+import ForgotPasswordPage from '../features/auth/pages/ForgotPasswordPage'
+import ResetPasswordPage from '../features/auth/pages/ResetPasswordPage'
 import UserManagementPage from '../features/users/pages/UserManagementPage'
 import UserInvitePage from '../features/users/pages/UserInvitePage'
 import CategoriesPage from '../features/categories/pages/CategoriesPage'
@@ -128,6 +130,30 @@ const AppRoutes = () => {
         element={
           <PublicRoute>
             <InviteSuccessPage />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/forgot-password" 
+        element={
+          <PublicRoute>
+            <ForgotPasswordPage />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/auth/reset-password" 
+        element={
+          <PublicRoute>
+            <ResetPasswordPage />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/reset-password" 
+        element={
+          <PublicRoute>
+            <ResetPasswordPage />
           </PublicRoute>
         } 
       />

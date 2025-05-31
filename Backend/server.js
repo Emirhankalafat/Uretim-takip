@@ -15,6 +15,7 @@ const { startTokenCleanupScheduler } = require('./auth/utils/scheduler');
 const { authenticateToken } = require('./auth/middleware/authMiddleware');
 const { csrfProtection } = require('./auth/middleware/csrfMiddleware');
 const { connectRedis } = require('./config/redis');
+const { checkInvite, acceptInvite } = require('./user/userController');
 require('dotenv').config();
 
 // Production modunu kontrol et
@@ -44,6 +45,10 @@ app.use(cookieParser()); // Cookie parse
 
 // Auth routes (CSRF koruması yok)
 app.use('/api/auth', authRoutes);
+
+// Public user routes (authentication gerekmez)
+app.get('/api/user/check-invite', checkInvite);
+app.post('/api/user/accept-invite', acceptInvite);
 
 // Diğer tüm route'lar için auth + CSRF koruması
 app.use('/api/permissions', authenticateToken, csrfProtection, permissionRoutes);

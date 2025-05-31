@@ -192,6 +192,15 @@ const LoginPage = () => {
                   Hemen kayıt olun
                 </Link>
               </p>
+
+              <p className="text-blue-200">
+                <Link
+                  to="/forgot-password"
+                  className="font-medium text-blue-300 hover:text-white transition-colors duration-200 underline decoration-2 underline-offset-2"
+                >
+                  Şifremi unuttum
+                </Link>
+              </p>
               
               <div className="pt-2">
                 <Link

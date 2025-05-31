@@ -132,9 +132,22 @@ api.interceptors.response.use(
       // Auth-status endpoint'inde 401 hatası varsa özel kontrol
       if (originalRequest.url?.includes('/auth/auth-status')) {
         // Public sayfalarda auth-status 401 hatası normaldir, refresh token deneme
-        const publicPaths = ['/', '/login', '/register', '/auth/confirm', '/confirm', '/auth/accept-invite', '/auth/invite-success']
+        const publicPaths = [
+          '/', 
+          '/login', 
+          '/register', 
+          '/forgot-password',
+          '/auth/reset-password',
+          '/reset-password',
+          '/auth/confirm', 
+          '/confirm', 
+          '/auth/accept-invite', 
+          '/auth/invite-success'
+        ]
         const currentPath = window.location.pathname
-        const isPublicPage = publicPaths.includes(currentPath)
+        const isPublicPage = publicPaths.includes(currentPath) || 
+                            currentPath.startsWith('/auth/reset-password') ||
+                            currentPath.startsWith('/reset-password')
         
         if (isPublicPage) {
           console.log(`🔓 Public sayfada auth-status 401 hatası: ${currentPath} - Refresh token denenmeyecek`)
@@ -150,6 +163,29 @@ api.interceptors.response.use(
 
       // Confirm endpoint'inde 401 hatası varsa refresh token deneme (hesap doğrulama için normal)
       if (originalRequest.url?.includes('/auth/confirm')) {
+        return Promise.reject(error)
+      }
+
+      // Public sayfalarda herhangi bir 401 hatası varsa refresh token deneme
+      const publicPaths = [
+        '/', 
+        '/login', 
+        '/register', 
+        '/forgot-password',
+        '/auth/reset-password',
+        '/reset-password',
+        '/auth/confirm', 
+        '/confirm', 
+        '/auth/accept-invite', 
+        '/auth/invite-success'
+      ]
+      const currentPath = window.location.pathname
+      const isPublicPage = publicPaths.includes(currentPath) || 
+                          currentPath.startsWith('/auth/reset-password') ||
+                          currentPath.startsWith('/reset-password')
+      
+      if (isPublicPage) {
+        console.log(`🔓 Public sayfada 401 hatası: ${currentPath} - Refresh token denenmeyecek`)
         return Promise.reject(error)
       }
 
@@ -211,8 +247,33 @@ api.interceptors.response.use(
 )
 
 const redirectToLogin = () => {
+  // Public sayfalar listesi
+  const publicPaths = [
+    '/', 
+    '/login', 
+    '/register', 
+    '/forgot-password',
+    '/auth/reset-password',
+    '/reset-password',
+    '/auth/confirm', 
+    '/confirm', 
+    '/auth/accept-invite', 
+    '/auth/invite-success'
+  ]
+  const currentPath = window.location.pathname
+  const isPublicPage = publicPaths.includes(currentPath) || 
+                      currentPath.startsWith('/auth/reset-password') ||
+                      currentPath.startsWith('/reset-password')
+  
+  // Public sayfalarda redirect yapma
+  if (isPublicPage) {
+    console.log(`🔓 Public sayfada redirect yapılmıyor: ${currentPath}`)
+    return
+  }
+  
   // Sadece login sayfasında değilsek yönlendir
   if (!window.location.pathname.includes('/login')) {
+    console.log(`🔒 Protected sayfadan login'e yönlendiriliyor: ${currentPath}`)
     // React Router'ı kullanarak yönlendir
     window.history.replaceState({}, '', '/login')
     // Popstate event'i tetikle ki React Router algılasın

@@ -3,6 +3,7 @@ import { Provider } from 'react-redux'
 import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 import { store } from './store'
 import AppRoutes from './routes/AppRoutes'
 import authService from './features/auth/services/authService'
@@ -26,13 +27,20 @@ const AuthInitializer = ({ children }) => {
         '/', 
         '/login', 
         '/register', 
+        '/forgot-password',
+        '/auth/reset-password',
+        '/reset-password', // Alternative path
         '/auth/confirm', 
         '/confirm', 
         '/auth/accept-invite', 
         '/auth/invite-success'
       ]
       
-      const isPublicPath = publicPaths.includes(location.pathname)
+      // Query parameter'lı path'ler için kontrol
+      const currentPath = location.pathname
+      const isPublicPath = publicPaths.includes(currentPath) || 
+                          currentPath.startsWith('/auth/reset-password') ||
+                          currentPath.startsWith('/reset-password')
       
       if (isPublicPath) {
         // Public sayfalarda backend'den auth durumunu kontrol et
@@ -42,22 +50,24 @@ const AuthInitializer = ({ children }) => {
           const userData = await authService.initialize()
           
           if (userData && userData.user) {
-            // Doğrulama başarılı - Dashboard'a yönlendir
-            console.log(`✅ Public sayfa auth başarılı - Dashboard'a yönlendiriliyor`)
+            // Login olmuş kullanıcılar tüm public sayfalarda dashboard'a yönlendirilir
+            console.log(`✅ Login olmuş kullanıcı public sayfada - Dashboard'a yönlendiriliyor: ${currentPath}`)
             dispatch(initializeSuccess(userData))
             navigate('/dashboard', { replace: true })
           } else {
             // Auth yok - public sayfada kal
-            console.log(`🔓 Public sayfa - Auth yok, sayfada kalınıyor: ${location.pathname}`)
+            console.log(`🔓 Public sayfa - Auth yok, sayfada kalınıyor: ${currentPath}`)
             dispatch(initializeSuccess(null))
           }
         } catch (error) {
-          // Auth başarısız - public sayfada kal (login hariç)
+          // Auth başarısız - public sayfada kal
           console.log(`🔓 Public sayfa auth hatası: ${error.message}`)
           dispatch(initializeSuccess(null))
           
-          // Eğer hatanın sebebi unauthorized değilse ve login sayfası değilse login'e yönlendir
-          if (error.response?.status !== 401 && location.pathname !== '/login') {
+          // Public sayfalarda herhangi bir yönlendirme yapma
+          // Sadece ciddi server hataları için login'e yönlendir
+          if (error.response?.status >= 500) {
+            console.log(`🚨 Sunucu hatası nedeniyle login'e yönlendiriliyor`)
             navigate('/login', { replace: true })
           }
         }
@@ -102,6 +112,26 @@ function App() {
     <Provider store={store}>
       <BrowserRouter>
         <AuthInitializer>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#363636',
+                color: '#fff',
+              },
+              success: {
+                style: {
+                  background: '#10B981',
+                },
+              },
+              error: {
+                style: {
+                  background: '#EF4444',
+                },
+              },
+            }}
+          />
           <AppRoutes />
         </AuthInitializer>
       </BrowserRouter>

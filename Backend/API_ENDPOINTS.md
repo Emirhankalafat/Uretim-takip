@@ -414,8 +414,7 @@ Permission: PRODUCT_STEP_CREATE
 ```
 
 ### 5. Ürün Adımı Güncelleme
-```
-PUT /api/product-steps/:id
+```PUT /api/product-steps/:id
 Authorization: Bearer token gerekli
 Permission: PRODUCT_STEP_UPDATE
 ```

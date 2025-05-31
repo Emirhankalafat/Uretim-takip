@@ -87,6 +87,27 @@ export const authService = {
     }
     return response.data
   },
+
+  // Şifre sıfırlama talebi
+  forgotPassword: async (email) => {
+    const response = await api.post('/auth/forgot-password', { email })
+    return response.data
+  },
+
+  // Reset token doğrulama
+  verifyResetToken: async (token) => {
+    const response = await api.get(`/auth/verify-reset-token?token=${token}`)
+    return response.data
+  },
+
+  // Şifre sıfırlama
+  resetPassword: async (token, newPassword) => {
+    const response = await api.post('/auth/reset-password', { 
+      token, 
+      newPassword 
+    })
+    return response.data
+  },
 }
 
 export default authService 
