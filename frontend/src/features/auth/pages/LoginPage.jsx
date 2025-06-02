@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import { loginStart, loginSuccess, loginFailure, clearLoading } from '../authSlice'
 import authService from '../services/authService'
 import Toast from '../../../components/Toast'
-import logo from '/src/assets/logo.png'
+import logo from '/src/assets/Logo.png'
 
 const LoginPage = () => {
   const dispatch = useDispatch()
