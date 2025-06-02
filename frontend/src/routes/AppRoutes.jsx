@@ -30,7 +30,7 @@ const OrderDetailPage = lazy(() => import('../features/orders/pages/OrderDetailP
 const MyJobsPage = lazy(() => import('../features/my-jobs/pages/MyJobsPage'))
 
 // Payment Pages
-const PaymentPage = lazy(() => import('../features/payment/pages/PaymentPage'))
+const CheckoutFormPage = lazy(() => import('../features/payment/pages/CheckoutFormPage'))
 const PaymentSuccessPage = lazy(() => import('../features/payment/pages/PaymentSuccessPage'))
 const PaymentFailPage = lazy(() => import('../features/payment/pages/PaymentFailPage'))
 
@@ -236,14 +236,20 @@ const AppRoutes = () => {
         } 
       />
       
-      {/* Payment Route */}
+      {/* Payment Route - Secure Checkout Form */}
       <Route 
         path="/payment" 
         element={
           <ProtectedRoute>
-            <PaymentPage />
+            <CheckoutFormPage />
           </ProtectedRoute>
         } 
+      />
+      
+      {/* Legacy manual payment route - redirect to secure payment */}
+      <Route 
+        path="/checkout" 
+        element={<Navigate to="/payment" replace />}
       />
       
       {/* Categories Route */}

@@ -1,10 +1,11 @@
 import { useSelector } from 'react-redux'
 import { useState, useEffect } from 'react'
-import userService from '../features/users/services/userService'
+import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 
 const DashboardPage = () => {
   const { user } = useSelector((state) => state.auth)
+  const navigate = useNavigate()
   const [profileData, setProfileData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -92,6 +93,132 @@ const DashboardPage = () => {
 
   const trialInfo = getTrialInfo()
 
+  // Subscription durumu analizi
+  const getSubscriptionStatus = () => {
+    const subscriptionPackage = profileData?.company_stats?.subscription_package || 'trial'
+    const subscriptionEnd = profileData?.company_stats?.subscription_end
+    
+    if (!subscriptionEnd) {
+      return { type: 'trial', needsUpgrade: true, remainingDays: 0 }
+    }
+    
+    const currentDate = new Date()
+    const endDate = new Date(subscriptionEnd)
+    const timeDiff = endDate.getTime() - currentDate.getTime()
+    const remainingDays = Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)))
+    
+    // Premium yenileme uyarısı için gün sayısı (değiştirilebilir)
+    const PREMIUM_RENEWAL_WARNING_DAYS = 7
+    
+    if (subscriptionPackage === 'premium') {
+      // Premium için: belirtilen gün kaldıysa yenileme önerisi
+      return {
+        type: 'premium',
+        needsRenewal: remainingDays <= PREMIUM_RENEWAL_WARNING_DAYS,
+        remainingDays,
+        isExpired: remainingDays === 0
+      }
+    } else {
+      // Trial/Basic için: premium'a geçiş önerisi
+      return {
+        type: subscriptionPackage,
+        needsUpgrade: true,
+        remainingDays,
+        isExpired: remainingDays === 0
+      }
+    }
+  }
+
+  const subscriptionStatus = getSubscriptionStatus()
+
+  // Ödeme sayfasına yönlendir
+  const handleUpgradeClick = () => {
+    navigate('/payment')
+  }
+
+  // Subscription Widget Component
+  const SubscriptionWidget = () => {
+    if (!subscriptionStatus) return null
+
+    // Premium ve süresi yeterli
+    if (subscriptionStatus.type === 'premium' && !subscriptionStatus.needsRenewal && !subscriptionStatus.isExpired) {
+      return (
+        <div className="mb-8 rounded-lg p-4 bg-green-50 border border-green-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <span className="text-2xl mr-3">✅</span>
+              <div>
+                <h3 className="text-sm font-medium text-green-800">Premium Üyelik Aktif</h3>
+                <p className="text-sm text-green-700">
+                  Premium üyeliğiniz {subscriptionStatus.remainingDays} gün daha geçerli.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Premium ama yenileme gerekiyor (son 7 gün)
+    if (subscriptionStatus.type === 'premium' && subscriptionStatus.needsRenewal) {
+      return (
+        <div className="mb-8 rounded-lg p-4 bg-orange-50 border border-orange-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <span className="text-2xl mr-3">⚠️</span>
+              <div>
+                <h3 className="text-sm font-medium text-orange-800">
+                  {subscriptionStatus.isExpired ? 'Premium Üyelik Süresi Doldu!' : 'Premium Üyelik Yenilemesi'}
+                </h3>
+                <p className="text-sm text-orange-700">
+                  {subscriptionStatus.isExpired 
+                    ? 'Premium üyeliğinizin süresi doldu. Özellikleriniz askıya alınacak.'
+                    : `Premium üyeliğinizin ${subscriptionStatus.remainingDays} günü kaldı. Şimdi yenileyin!`
+                  }
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleUpgradeClick}
+              className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors text-sm font-medium"
+            >
+              Üyeliği Yenile (30 Gün)
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    // Trial/Basic için premium'a geçiş
+    return (
+      <div className="mb-8 rounded-lg p-4 bg-blue-50 border border-blue-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <span className="text-2xl mr-3">🚀</span>
+            <div>
+              <h3 className="text-sm font-medium text-blue-800">Premium'a Geçin!</h3>
+              <p className="text-sm text-blue-700">
+                {subscriptionStatus.type === 'trial' 
+                  ? `Trial sürenizin ${subscriptionStatus.remainingDays} günü kaldı. Premium'a geçerek tüm özelliklerin keyfini çıkarın!`
+                  : 'Basic planınızı Premium\'a yükselterek daha fazla özellik kazanın!'
+                }
+              </p>
+              <div className="mt-2 text-xs text-blue-600">
+                ✨ Sınırsız proje • 📊 Gelişmiş analitik • 🎯 Öncelikli destek
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={handleUpgradeClick}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+          >
+            Premium'a Geç (₺99/30gün)
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   // Normal kullanıcı için kişisel bilgiler
   const UserDashboard = () => (
     <div className="py-8">
@@ -99,12 +226,15 @@ const DashboardPage = () => {
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">
-            Hoş geldin, {user?.name || 'Kullanıcı'}!
+            Hoş geldin, {user?.Name || user?.name || 'Kullanıcı'}!
           </h1>
           <p className="mt-1 text-sm text-gray-600">
             Kişisel dashboard'unuz
           </p>
         </div>
+
+        {/* Subscription Widget */}
+        <SubscriptionWidget />
 
         {/* Kullanıcı Bilgileri */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -118,12 +248,12 @@ const DashboardPage = () => {
               <div className="flex items-center">
                 <div className="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center">
                   <span className="text-lg font-medium text-primary-700">
-                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                    {(user?.Name || user?.name || 'U').charAt(0).toUpperCase()}
                   </span>
                 </div>
                 <div className="ml-4">
                   <div className="text-sm font-medium text-gray-900">
-                    {user?.name || 'İsimsiz Kullanıcı'}
+                    {user?.Name || user?.name || 'İsimsiz Kullanıcı'}
                   </div>
                   <div className="text-sm text-gray-500">
                     Kullanıcı
@@ -134,7 +264,7 @@ const DashboardPage = () => {
               <div className="border-t pt-4 space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500">E-posta:</span>
-                  <span className="text-sm font-medium text-gray-900">{profileData?.mail || user?.email || 'Belirtilmemiş'}</span>
+                  <span className="text-sm font-medium text-gray-900">{profileData?.mail || user?.Mail || user?.email || 'Belirtilmemiş'}</span>
                 </div>
                 
                 <div className="flex justify-between">
@@ -152,7 +282,7 @@ const DashboardPage = () => {
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500">Kullanıcı Tipi:</span>
                   <span className="text-sm font-medium text-gray-900">
-                    {profileData?.is_SuperAdmin ? 'Super Admin' : 'Kullanıcı'}
+                    {profileData?.is_SuperAdmin || user?.is_SuperAdmin ? 'Super Admin' : 'Kullanıcı'}
                   </span>
                 </div>
               </div>
@@ -168,7 +298,10 @@ const DashboardPage = () => {
             </div>
             <div className="px-6 py-4">
               <div className="grid grid-cols-1 gap-4">
-                <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                <button 
+                  onClick={() => navigate('/my-permissions')}
+                  className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
                   <span className="text-2xl mr-3">🔐</span>
                   <div className="text-left">
                     <div className="text-sm font-medium text-gray-900">
@@ -234,7 +367,7 @@ const DashboardPage = () => {
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">
-            Hoş geldin, {user?.name || 'Admin'}!
+            Hoş geldin, {user?.Name || user?.name || 'Admin'}!
           </h1>
           <p className="mt-1 text-sm text-gray-600">
             Sistem yönetimi dashboard'u
@@ -246,116 +379,90 @@ const DashboardPage = () => {
           )}
         </div>
 
-        {/* Trial Uyarısı */}
-        <div className={`mb-8 rounded-lg p-4 ${trialInfo.isExpired ? 'bg-red-50 border border-red-200' : trialInfo.remainingDays <= 7 ? 'bg-yellow-50 border border-yellow-200' : 'bg-blue-50 border border-blue-200'}`}>
-          <div className="flex items-center">
-            <span className="text-2xl mr-3">
-              {trialInfo.isExpired ? '⚠️' : trialInfo.remainingDays <= 7 ? '⏰' : 'ℹ️'}
-            </span>
-            <div>
-              <h3 className={`text-sm font-medium ${trialInfo.isExpired ? 'text-red-800' : trialInfo.remainingDays <= 7 ? 'text-yellow-800' : 'text-blue-800'}`}>
-                {trialInfo.isExpired ? 'Trial Süresi Doldu!' : `Trial Süresi: ${trialInfo.remainingDays} Gün Kaldı`}
-              </h3>
-              <p className={`text-sm ${trialInfo.isExpired ? 'text-red-700' : trialInfo.remainingDays <= 7 ? 'text-yellow-700' : 'text-blue-700'}`}>
-                {trialInfo.isExpired 
-                  ? 'Lütfen lisansınızı yenileyin veya satın alın.'
-                  : `${trialInfo.totalDays} günlük trial sürenizin ${trialInfo.remainingDays} günü kaldı.`
-                }
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Subscription Widget */}
+        <SubscriptionWidget />
 
         {/* Sistem İstatistikleri */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-          {loading ? (
-            <div className="col-span-4 text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-              <p className="mt-2 text-sm text-gray-600">İstatistikler yükleniyor...</p>
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <span className="text-2xl">👥</span>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">
+                      Toplam Kullanıcı
+                    </dt>
+                    <dd className="text-lg font-medium text-gray-900">
+                      {profileData?.company_stats?.total_users || 0}
+                    </dd>
+                  </dl>
+                </div>
+              </div>
             </div>
-          ) : (
-            <>
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <span className="text-2xl">👥</span>
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">
-                          Toplam Kullanıcı
-                        </dt>
-                        <dd className="text-lg font-medium text-gray-900">
-                          {profileData?.company_stats?.total_users || 0}
-                        </dd>
-                      </dl>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          </div>
 
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <span className="text-2xl">✅</span>
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">
-                          Aktif Kullanıcı
-                        </dt>
-                        <dd className="text-lg font-medium text-gray-900">
-                          {profileData?.company_stats?.active_users || 0}
-                        </dd>
-                      </dl>
-                    </div>
-                  </div>
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <span className="text-2xl">✅</span>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">
+                      Aktif Kullanıcı
+                    </dt>
+                    <dd className="text-lg font-medium text-gray-900">
+                      {profileData?.company_stats?.active_users || 0}
+                    </dd>
+                  </dl>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <span className="text-2xl">👑</span>
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">
-                          Onaylı Kullanıcı
-                        </dt>
-                        <dd className="text-lg font-medium text-gray-900">
-                          {profileData?.company_stats?.confirmed_users || 0}
-                        </dd>
-                      </dl>
-                    </div>
-                  </div>
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <span className="text-2xl">👑</span>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">
+                      Onaylı Kullanıcı
+                    </dt>
+                    <dd className="text-lg font-medium text-gray-900">
+                      {profileData?.company_stats?.confirmed_users || 0}
+                    </dd>
+                  </dl>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <span className="text-2xl">⏳</span>
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">
-                          Trial Günü
-                        </dt>
-                        <dd className="text-lg font-medium text-gray-900">
-                          {trialInfo.remainingDays}
-                        </dd>
-                      </dl>
-                    </div>
-                  </div>
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <span className="text-2xl">⏳</span>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">
+                      Abonelik Durumu
+                    </dt>
+                    <dd className="text-lg font-medium text-gray-900">
+                      {subscriptionStatus?.type === 'premium' ? `${subscriptionStatus.remainingDays} gün` : 'Trial'}
+                    </dd>
+                  </dl>
                 </div>
               </div>
-            </>
-          )}
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -368,7 +475,10 @@ const DashboardPage = () => {
             </div>
             <div className="px-6 py-4">
               <div className="grid grid-cols-1 gap-4">
-                <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                <button 
+                  onClick={() => navigate('/user-management')}
+                  className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
                   <span className="text-2xl mr-3">👥</span>
                   <div className="text-left">
                     <div className="text-sm font-medium text-gray-900">
@@ -465,12 +575,14 @@ const DashboardPage = () => {
                   <div className="flex items-center">
                     <span className="text-xl mr-3">💳</span>
                     <div>
-                      <div className="text-sm font-medium text-gray-900">Lisans Durumu</div>
-                      <div className="text-sm text-gray-500">Trial sürümü</div>
+                      <div className="text-sm font-medium text-gray-900">Abonelik Durumu</div>
+                      <div className="text-sm text-gray-500">
+                        {subscriptionStatus?.type === 'premium' ? 'Premium aktif' : 'Trial sürümü'}
+                      </div>
                     </div>
                   </div>
                   <span className="text-sm font-medium text-blue-600">
-                    {trialInfo.remainingDays} gün kaldı
+                    {subscriptionStatus?.remainingDays || trialInfo.remainingDays} gün kaldı
                   </span>
                 </div>
               </div>

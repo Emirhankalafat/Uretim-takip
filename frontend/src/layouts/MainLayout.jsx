@@ -85,13 +85,6 @@ const MainLayout = ({ children }) => {
       requireSuperAdmin: true,
       gradient: 'from-purple-500 to-purple-600'
     },
-    { 
-      name: 'Ödeme', 
-      href: '/payment', 
-      icon: '💳', 
-      requireSuperAdmin: true,
-      gradient: 'from-yellow-500 to-orange-600'
-    },
   ]
 
   const isActive = (href) => location.pathname === href

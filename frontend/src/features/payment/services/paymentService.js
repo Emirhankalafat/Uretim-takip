@@ -1,9 +1,9 @@
 import api from '../../../services/api'
 
 const paymentService = {
-  // 3D Secure ödeme başlatma
-  start3DSecurePayment: async (paymentData) => {
-    const response = await api.post('/payment/3dsecure', paymentData)
+  // Checkout Form ödeme başlatma - Iyzico hosted form
+  initializeCheckoutForm: async (paymentData) => {
+    const response = await api.post('/payment/checkout-form', paymentData)
     return response.data
   },
 

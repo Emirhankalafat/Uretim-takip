@@ -4,478 +4,405 @@ const prisma = new PrismaClient();
 
 class PaymentController {
   /**
-   * 3D Secure callback handler
-   * İyzico sonucu alır, ödeme başarıysa şirketi premium yapar, kartı kaydeder, loglar
+   * Iyzico Checkout Form başlatma - Hosted form sistemi
+   * Manuel form yerine Iyzico'nun güvenli formunu kullanır
    */
-  static async handle3DSCallback(req, res) {
+  static async initializeCheckoutForm(req, res) {
     try {
-      // Gelen tüm callback verisini logla (debugging için)
-      console.log('3DS Callback alındı:', {
-        headers: req.headers,
-        body: JSON.stringify(req.body, null, 2),
-        contentType: req.get('Content-Type')
+      const user = req.user; // token'dan gelen kullanıcı
+      const { billing, shipping, product, registerCard } = req.body;
+
+      console.log('Checkout Form initialization:', {
+        userId: user.id,
+        userEmail: user.email,
+        productPrice: product?.price,
+        hasBilling: !!billing,
+        hasShipping: !!shipping,
+        registerCard
       });
 
-      const { paymentId, conversationData, conversationId, mdStatus, status } = req.body;
-      
-      // 1. ÖNCE conversationId kontrolü (her zaman olmalı)
-      if (!conversationId) {
-        console.warn('❌ conversationId eksik:', JSON.stringify(req.body, null, 2));
-        return res.status(400).send('Eksik conversation ID');
+      // Validation
+      if (!product || !product.price) {
+        return res.status(400).json({ error: 'Ürün bilgisi eksik' });
       }
 
-      // conversationId formatını kontrol et
-      const conversationParts = conversationId.split('-');
-      if (conversationParts.length !== 4 || conversationParts[0] !== 'sub') {
-        console.warn('❌ Geçersiz conversationId formatı:', conversationId);
-        return res.status(400).send('Geçersiz conversation ID');
+      if (!billing || !billing.address || !billing.city) {
+        return res.status(400).json({ error: 'Fatura adresi bilgileri eksik' });
       }
-
-      // conversationId → sub-USERID-COMPANYID-SAVEFLAG
-      const [_, userIdStr, companyIdStr, saveFlag] = conversationParts;
-      
-      // Sayısal değerleri kontrol et
-      if (!userIdStr || !companyIdStr || isNaN(userIdStr) || isNaN(companyIdStr)) {
-        console.warn('❌ Geçersiz user/company ID:', { userIdStr, companyIdStr });
-        return res.status(400).send('Geçersiz kullanıcı verisi');
-      }
-
-      const userId = BigInt(userIdStr);
-      const companyId = BigInt(companyIdStr);
-      const shouldSaveCard = saveFlag === '1';
-
-      // 2. SONRA mdStatus ve status kontrolü (başarısız ödemeler için)
-      // mdStatus: "0" = başarısız, status: "failure" = başarısız
-      if ((mdStatus && !['1', '2', '3', '4'].includes(mdStatus)) || status === 'failure') {
-        console.warn('❌ 3D Secure/Ödeme başarısız:', {
-          mdStatus,
-          status,
-          conversationId,
-          paymentId: paymentId || 'boş'
-        });
-        
-        // Başarısız ödemeyi logla
-        try {
-          await prisma.paymentLog.create({
-            data: {
-              user_id: userId,
-              status: status || 'md_failed',
-              price: 0,
-              currency: 'TRY',
-              conversation_id: conversationId,
-              payment_id: paymentId || 'empty_payment_id',
-              basket_id: 'payment_failed',
-              error_message: `Ödeme başarısız - mdStatus: ${mdStatus}, status: ${status}`
-            }
-          });
-          console.log('📝 Başarısız ödeme loglandı');
-        } catch (logError) {
-          console.error('❌ Başarısız ödeme log hatası:', logError);
-        }
-
-        console.log('↩️ Başarısızlık sayfasına yönlendiriliyor...');
-        return res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
-      }
-
-      // 3. BAŞARILI ÖDEMELER İÇİN diğer veri kontrolü
-      if (!paymentId) {
-        console.warn('❌ Başarılı ödeme ama paymentId eksik:', {
-          paymentId: !!paymentId,
-          conversationData: !!conversationData,
-          mdStatus,
-          status,
-          body: JSON.stringify(req.body, null, 2)
-        });
-        
-        // Bu durumda bile logla
-        try {
-          await prisma.paymentLog.create({
-            data: {
-              user_id: userId,
-              status: 'missing_payment_id',
-              price: 0,
-              currency: 'TRY',
-              conversation_id: conversationId,
-              payment_id: paymentId || 'missing_payment_id',
-              basket_id: 'incomplete_callback',
-              error_message: 'Başarılı görünen ödeme ama paymentId eksik'
-            }
-          });
-        } catch (logError) {
-          console.error('❌ Eksik veri log hatası:', logError);
-        }
-
-        return res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
-      }
-
-      // conversationData sandbox'ta bazen boş gelebilir, uyarı ver ama devam et
-      if (!conversationData) {
-        console.warn('⚠️ conversationData boş (sandbox normal olabilir):', {
-          paymentId,
-          conversationData: conversationData || 'EMPTY',
-          mdStatus,
-          status,
-          environment: process.env.NODE_ENV
-        });
-      }
-
-      console.log('✅ Callback verisi doğrulandı:', {
-        userId: userId.toString(),
-        companyId: companyId.toString(),
-        shouldSaveCard,
-        mdStatus,
-        status
-      });
-
-      // İyzico ödeme doğrulamaya geç (sadece başarılı ödemeler için)
-      const iyzicoRequest = {
-        locale: 'tr',
-        conversationId,
-        paymentId,
-        conversationData: conversationData || '' // Boş string olsa bile gönder
-      };
-
-      console.log('🔍 İyzico doğrulama request:', {
-        conversationId,
-        paymentId,
-        conversationDataExists: !!conversationData,
-        conversationDataLength: conversationData ? conversationData.length : 0
-      });
-
-      iyzipay.threedsPayment.create(
-        iyzicoRequest,
-        async (err, rawResult) => {
-          if (err) {
-            console.error('❌ İyzico doğrulama hatası:', {
-              errorMessage: err.message,
-              errorCode: err.errorCode,
-              errorGroup: err.errorGroup,
-              conversationId,
-              paymentId,
-              conversationDataProvided: !!conversationData
-            });
-            
-            // Hatalı doğrulama denemesini logla
-            try {
-              await prisma.paymentLog.create({
-                data: {
-                  user_id: userId,
-                  status: 'verification_error',
-                  price: 0,
-                  currency: 'TRY',
-                  conversation_id: conversationId,
-                  payment_id: paymentId,
-                  basket_id: 'iyzico_verification_failed',
-                  error_message: `İyzico doğrulama hatası: ${err.message} (Code: ${err.errorCode || 'unknown'})`
-                }
-              });
-            } catch (logError) {
-              console.error('❌ Hata log kaydı başarısız:', logError);
-            }
-
-            return res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
-          }
-
-          let result;
-          try {
-            // İyzico response'u bazen string, bazen object olarak gelebilir
-            if (typeof rawResult === 'string') {
-              result = JSON.parse(rawResult);
-            } else if (typeof rawResult === 'object' && rawResult !== null) {
-              result = rawResult;
-            } else {
-              throw new Error('Unexpected response type from Iyzico');
-            }
-          } catch (e) {
-            console.error('❌ İyzico JSON parse hatası:', e.message);
-            console.error('Raw result:', rawResult);
-            
-            // Parse hatası logla
-            try {
-              await prisma.paymentLog.create({
-                data: {
-                  user_id: userId,
-                  status: 'parse_error',
-                  price: 0,
-                  currency: 'TRY',
-                  conversation_id: conversationId,
-                  payment_id: paymentId,
-                  basket_id: 'json_parse_failed',
-                  error_message: `JSON parse hatası: ${e.message}`
-                }
-              });
-            } catch (logError) {
-              console.error('❌ Parse hata log kaydı başarısız:', logError);
-            }
-
-            return res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
-          }
-
-          // İyzico yanıtını logla
-          console.log('📋 İyzico doğrulama yanıtı:', {
-            status: result.status,
-            errorMessage: result.errorMessage,
-            paymentId: result.paymentId,
-            price: result.price
-          });
-
-          if (result.status !== 'success') {
-            console.warn('❌ Ödeme başarısız:', result.errorMessage);
-            
-            // Başarısız ödemeyi logla
-            await prisma.paymentLog.create({
-              data: {
-                user_id: userId,
-                status: result.status,
-                price: parseFloat(result.price || '0'),
-                currency: result.currency || 'TRY',
-                conversation_id: conversationId,
-                payment_id: paymentId,
-                basket_id: result.basketId || 'unknown',
-                error_message: result.errorMessage || 'Ödeme başarısız'
-              }
-            });
-
-            return res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
-          }
-
-          try {
-            console.log('🏆 Ödeme başarılı, veritabanı işlemleri başlatılıyor...');
-
-            // 2. Şirketi premium yap
-            await prisma.company.update({
-              where: { id: companyId },
-              data: {
-                Suspscription_package: 'premium',
-                Sub_end_time: new Date(new Date().setMonth(new Date().getMonth() + 1))
-              }
-            });
-            console.log('✅ Şirket premium yapıldı:', companyId.toString());
-
-            // 3. Kart kayıt edilecekse
-            if (shouldSaveCard && result.cardUserKey && result.cardToken) {
-              const card = result.cardDetails || {};
-              await prisma.userCard.upsert({
-                where: {
-                  user_id_card_token: {
-                    user_id: userId,
-                    card_token: result.cardToken
-                  }
-                },
-                update: {},
-                create: {
-                  user_id: userId,
-                  card_user_key: result.cardUserKey,
-                  card_token: result.cardToken,
-                  card_alias: card.cardAlias || 'Kayıtlı Kart',
-                  bin_number: card.binNumber || '',
-                  last_four: card.lastFourDigits || '',
-                  card_type: card.cardType || '',
-                  association: card.cardAssociation || '',
-                  card_family: card.cardFamily || ''
-                }
-              });
-              console.log('💳 Kart kaydedildi:', result.cardToken);
-            }
-
-            // 4. Başarılı ödeme kaydı
-            await prisma.paymentLog.create({
-              data: {
-                user_id: userId,
-                status: result.status,
-                price: parseFloat(result.price || '0'),
-                currency: result.currency || 'TRY',
-                conversation_id: conversationId,
-                payment_id: result.paymentId,
-                basket_id: result.basketId || ''
-              }
-            });
-            console.log('📝 Ödeme log kaydı oluşturuldu');
-
-            console.log('🎉 Tüm işlemler başarıyla tamamlandı, başarı sayfasına yönlendiriliyor...');
-            return res.redirect(`${process.env.FRONTEND_URL}/payment/success`);
-            
-          } catch (dbError) {
-            console.error('❌ Veritabanı işlem hatası:', dbError);
-            
-            // Veritabanı hatası logla
-            try {
-              await prisma.paymentLog.create({
-                data: {
-                  user_id: userId,
-                  status: 'db_error',
-                  price: parseFloat(result.price || '0'),
-                  currency: result.currency || 'TRY',
-                  conversation_id: conversationId,
-                  payment_id: result.paymentId,
-                  basket_id: result.basketId || 'db_operation_failed',
-                  error_message: `Veritabanı hatası: ${dbError.message}`
-                }
-              });
-            } catch (logError) {
-              console.error('❌ DB hata log kaydı başarısız:', logError);
-            }
-
-            return res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
-          }
-        }
-      );
-    } catch (error) {
-      console.error('❌ Callback genel hata:', error);
-      console.error('Stack trace:', error.stack);
-      return res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
-    }
-  }
-
-  /**
-   * 3D Secure ödeme başlatma fonksiyonu
-   * JWT ile kullanıcıyı doğrular, süper admin kontrolü yapar, İyzico 3D Secure başlatır
-   */
-  static async start3DSecurePayment(req, res) {
-    try {
-      const user = req.user;
-      
-      const {
-        cardHolderName,
-        cardNumber,
-        expireMonth,
-        expireYear,
-        cvc,
-        registerCard, // true / false
-        // Billing Address Fields
-        billingContactName,
-        billingCity,
-        billingCountry,
-        billingAddress
-      } = req.body;
-
-      if (!user.is_SuperAdmin) {
-        return res.status(403).json({ error: 'Yetkiniz yok' });
-      }
-
-      // Kullanıcının kayıtlı kartı var mı kontrol et
-      const cardUserKey = await PaymentController._getCardUserKeyOrNull(user.id);
-      const shouldSaveCard = registerCard === true || registerCard === 'true';
-
-      const conversationId = `sub-${user.id}-${user.company_id}-${shouldSaveCard ? '1' : '0'}`;
 
       const request = {
         locale: 'tr',
-        conversationId,
-        price: '99.90',
-        paidPrice: '99.90',
+        conversationId: `checkout-${user.id}-${Date.now()}`,
+        price: product.price,
+        paidPrice: product.price,
         currency: 'TRY',
-        installment: '1',
-        basketId: `premium-${user.id}-${Date.now()}`,
-        paymentChannel: 'WEB',
-        paymentGroup: 'SUBSCRIPTION',
-        callbackUrl: `${process.env.BACKEND_URL}/api/payment/3dsecure/callback`,
-        paymentCard: {
-          cardHolderName,
-          cardNumber,
-          expireMonth,
-          expireYear,
-          cvc,
-          registerCard: shouldSaveCard ? '1' : '0'
-        },
+        basketId: product.basketId || `basket-${user.id}-${Date.now()}`,
+        paymentGroup: 'PRODUCT',
+        callbackUrl: `${process.env.BACKEND_URL}/api/payment/callback`,
+        enabledInstallments: [1], // taksit sayıları
         buyer: {
-          id: user.id.toString(),
-          name: user.Name,
-          surname: 'Bilinmiyor',
-          gsmNumber: '5555555555',
-          email: user.Mail,
-          identityNumber: '11111111111',
-          registrationAddress: 'Kadıköy',
-          ip: req.ip,
-          city: 'İstanbul',
-          country: 'Turkey'
-        },
-        billingAddress: {
-          contactName: billingContactName || user.Name,
-          city: billingCity || 'İstanbul',
-          country: billingCountry || 'Turkey',
-          address: billingAddress || 'Adres belirtilmemiş'
+          id: `buyer-${user.id}-${Date.now()}`,
+          name: user.Name || user.name,
+          surname: user.surname || 'Bilinmiyor',
+          email: user.Mail || user.email,
+          gsmNumber: user.phone || '+901234567890',
+          identityNumber: user.identityNumber || '11111111111',
+          registrationAddress: billing.address,
+          ip: req.ip || req.connection.remoteAddress || '127.0.0.1',
+          city: billing.city,
+          country: billing.country || 'Turkey',
+          zipCode: billing.zipCode || '34000'
         },
         shippingAddress: {
-          contactName: billingContactName || user.Name,
-          city: billingCity || 'İstanbul',
-          country: billingCountry || 'Turkey',
-          address: billingAddress || 'Adres belirtilmemiş'
+          contactName: shipping?.contactName || `${user.Name || user.name} ${user.surname || ''}`,
+          city: shipping?.city || billing.city,
+          country: shipping?.country || billing.country || 'Turkey',
+          address: shipping?.address || billing.address,
+          zipCode: shipping?.zipCode || billing.zipCode || '34000'
+        },
+        billingAddress: {
+          contactName: billing.contactName || `${user.Name || user.name} ${user.surname || ''}`,
+          city: billing.city,
+          country: billing.country || 'Turkey',
+          address: billing.address,
+          zipCode: billing.zipCode || '34000'
         },
         basketItems: [
           {
-            id: 'PREMIUM',
-            name: 'Premium Üyelik',
-            category1: 'Abonelik',
+            id: product.id || 'premium-membership',
+            name: product.name || 'Premium Üyelik',
+            category1: product.category || 'Membership',
             itemType: 'VIRTUAL',
-            price: '99.90'
+            price: product.price
           }
         ]
       };
 
-      // Kayıtlı kart varsa cardUserKey ekle
-      if (cardUserKey) {
-        request.cardUserKey = cardUserKey;
+      // Kart kaydetme seçeneği
+      console.log('🔍 RegisterCard debug:', { registerCard, type: typeof registerCard });
+      
+      if (registerCard === true) {
+        request.registerCard = '1'; // String olarak deneyelim
       }
 
-      iyzipay.threedsInitialize.create(request, (err, result) => {
+      console.log('Iyzico Checkout Request:', {
+        conversationId: request.conversationId,
+        price: request.price,
+        currency: request.currency,
+        callbackUrl: request.callbackUrl,
+        buyerId: request.buyer.id,
+        buyerEmail: request.buyer.email,
+        registerCard: request.registerCard // Bu alanı da loglayalım
+      });
+
+      // Tam request objesini de loglayalım
+      console.log('🔍 Full Iyzico Request:', JSON.stringify(request, null, 2));
+
+      iyzipay.checkoutFormInitialize.create(request, async (err, result) => {
         if (err) {
-          console.error('İyzico 3D başlatma hatası:', err);
-          return res.status(500).json({ error: 'Ödeme başlatılamadı' });
+          console.error('❌ Iyzico Checkout Form error:', {
+            errorMessage: err.message,
+            errorCode: err.errorCode,
+            errorGroup: err.errorGroup
+          });
+          return res.status(500).json({ 
+            error: 'Ödeme formu başlatılamadı', 
+            detail: err.message 
+          });
         }
 
-        let data;
+        if (result.status !== 'success') {
+          console.error('❌ Iyzico Checkout Form failed:', {
+            status: result.status,
+            errorCode: result.errorCode,
+            errorMessage: result.errorMessage
+          });
+          return res.status(500).json({ 
+            error: 'Ödeme formu başlatılamadı', 
+            detail: result.errorMessage || 'Unknown error'
+          });
+        }
+
+        // Token'ı Redis'e kullanıcı bilgileriyle birlikte kaydet (30 dakika expire)
         try {
-          // İyzico response'u bazen string, bazen object olarak gelebilir
-          if (typeof result === 'string') {
-            data = JSON.parse(result);
-          } else if (typeof result === 'object' && result !== null) {
-            data = result;
-          } else {
-            throw new Error('Unexpected response type');
-          }
-        } catch (e) {
-          console.error('İyzico JSON parse hatası:', e.message);
-          console.error('Raw result:', result);
-          return res.status(500).json({ error: 'Ödeme başlatılamadı' });
+          const { redisClient } = require('../config/redis');
+          const checkoutData = {
+            userId: user.id,
+            conversationId: request.conversationId,
+            price: product.price,
+            productName: product.name || 'Premium Üyelik',
+            createdAt: new Date().toISOString()
+          };
+          
+          await redisClient.setEx(`checkout_token:${result.token}`, 1800, JSON.stringify(checkoutData));
+          console.log('✅ Checkout token Redis\'e kaydedildi:', result.token?.substring(0, 20) + '...');
+        } catch (redisError) {
+          console.error('❌ Redis\'e checkout token kaydedilemedi:', redisError);
+          // Redis hatası olursa da devam et, callback'te alternatif yöntem kullanılacak
         }
 
-        if (data.status !== 'success') {
-          return res.status(400).json({ error: data.errorMessage });
-        }
-
-        // Debug: İyzico'dan ne geldiğini kontrol et
-        console.log('İyzico Response Data:', {
-          status: data.status,
-          hasThreeDSContent: !!data.threeDSHtmlContent,
-          contentLength: data.threeDSHtmlContent?.length,
-          contentStart: data.threeDSHtmlContent?.substring(0, 100)
+        console.log('✅ Checkout Form created successfully:', {
+          token: result.token?.substring(0, 20) + '...',
+          checkoutFormUrl: result.checkoutFormUrl,
+          paymentPageUrl: result.paymentPageUrl
         });
 
-        let htmlContent = data.threeDSHtmlContent;
+        // Başarılı response - frontend'e checkout form bilgilerini döndür
+        res.json({
+          success: true,
+          token: result.token,
+          checkoutFormUrl: result.checkoutFormUrl,
+          paymentPageUrl: result.paymentPageUrl,
+          checkoutFormContent: result.checkoutFormContent // HTML content da olabilir
+        });
+      });
 
-        // Base64 decode kontrolü - İyzico bazen base64 encode eder
-        if (htmlContent && !htmlContent.includes('<html')) {
-          try {
-            // Base64 olabilir, decode deneyelim
-            const decoded = Buffer.from(htmlContent, 'base64').toString('utf-8');
-            if (decoded.includes('<html') || decoded.includes('<form')) {
-              console.log('Base64 decode başarılı');
-              htmlContent = decoded;
-            }
-          } catch (e) {
-            console.log('Base64 decode edilemedi, normal HTML olarak devam ediliyor');
-          }
+    } catch (error) {
+      console.error('Checkout Form genel hata:', error);
+      res.status(500).json({ error: 'Sunucu hatası' });
+    }
+  }
+
+  /**
+   * Iyzico Checkout Form callback handler
+   * Checkout Form'dan gelen sonuçları işler
+   */
+  static async handleCheckoutCallback(req, res) {
+    try {
+      console.log('Checkout Form Callback alındı:', {
+        headers: req.headers,
+        body: req.body,
+        query: req.query
+      });
+
+      const { token } = req.body;
+
+      if (!token) {
+        console.error('❌ Checkout callback token eksik');
+        return res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
+      }
+
+      // Iyzico'dan ödeme sonucunu al
+      const request = {
+        locale: 'tr',
+        token: token
+      };
+
+      iyzipay.checkoutForm.retrieve(request, async (err, result) => {
+        if (err) {
+          console.error('❌ Checkout Form retrieve error:', err);
+          return res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
         }
 
-        console.log('Final HTML Content Start:', htmlContent?.substring(0, 200));
+        if (result.status !== 'success') {
+          console.error('❌ Checkout Form payment failed:', {
+            status: result.status,
+            errorCode: result.errorCode,
+            errorMessage: result.errorMessage
+          });
+          return res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
+        }
 
-        // İyzico'dan gelen HTML içeriğini direkt döndür
-        res.send(htmlContent);
+        console.log('✅ Checkout Form payment successful:', {
+          paymentId: result.paymentId,
+          conversationId: result.conversationId,
+          price: result.paidPrice,
+          status: result.paymentStatus
+        });
+
+        // Kart bilgilerini debug için logla
+        console.log('🔍 Kart bilgileri debug:', {
+          cardUserKey: result.cardUserKey,
+          binNumber: result.binNumber,
+          cardToken: result.cardToken,
+          cardAlias: result.cardAlias,
+          lastFourDigits: result.lastFourDigits,
+          cardType: result.cardType,
+          cardAssociation: result.cardAssociation,
+          cardFamily: result.cardFamily,
+          hasCardUserKey: !!result.cardUserKey,
+          hasBinNumber: !!result.binNumber
+        });
+
+        let userId;
+        let conversationId;
+
+        // Önce Redis'ten kullanıcı bilgilerini al
+        try {
+          const { redisClient } = require('../config/redis');
+          const checkoutDataJson = await redisClient.get(`checkout_token:${token}`);
+          
+          if (checkoutDataJson) {
+            const checkoutData = JSON.parse(checkoutDataJson);
+            userId = BigInt(checkoutData.userId);
+            conversationId = checkoutData.conversationId;
+            console.log('✅ Redis\'ten kullanıcı bilgisi alındı:', { userId: checkoutData.userId, conversationId });
+            
+            // Kullanıldıktan sonra token'ı sil
+            await redisClient.del(`checkout_token:${token}`);
+          } else {
+            console.warn('⚠️ Redis\'te token bulunamadı, conversationId\'den çözmeye çalışılıyor...');
+            
+            // Redis'te yoksa conversationId'den çözmeye çalış (fallback)
+            if (result.conversationId) {
+              conversationId = result.conversationId;
+              const conversationParts = result.conversationId.split('-');
+              if (conversationParts.length >= 3 && conversationParts[0] === 'checkout') {
+                userId = BigInt(conversationParts[1]);
+                console.log('✅ ConversationId\'den kullanıcı bilgisi çözüldü:', { userId: conversationParts[1], conversationId });
+              } else {
+                throw new Error('Invalid conversationId format');
+              }
+            } else {
+              throw new Error('Ne Redis\'te token ne de conversationId bulunamadı');
+            }
+          }
+        } catch (redisError) {
+          console.error('❌ Kullanıcı bilgisi alınamadı:', redisError);
+          return res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
+        }
+
+        if (!userId) {
+          console.error('❌ UserId belirlenemedi');
+          return res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
+        }
+
+        try {
+          // Kullanıcının şirketini premium yap
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { company_id: true }
+          });
+
+          if (!user) {
+            throw new Error('Kullanıcı bulunamadı');
+          }
+
+          // Şirketin mevcut abonelik durumunu kontrol et
+          const company = await prisma.company.findUnique({
+            where: { id: user.company_id },
+            select: { 
+              Suspscription_package: true, 
+              Sub_end_time: true 
+            }
+          });
+
+          let newEndDate;
+          const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000; // 30 gün
+
+          if (company?.Suspscription_package === 'premium' && company?.Sub_end_time) {
+            // Premium varsa ve henüz süresi dolmamışsa, mevcut süreye 30 gün ekle
+            const currentEndDate = new Date(company.Sub_end_time);
+            const now = new Date();
+            
+            if (currentEndDate > now) {
+              // Mevcut süre henüz dolmamış, ona 30 gün ekle
+              newEndDate = new Date(currentEndDate.getTime() + thirtyDaysInMs);
+              console.log('✅ Mevcut premium süresine 30 gün eklendi:', {
+                eskiSure: currentEndDate.toISOString(),
+                yeniSure: newEndDate.toISOString()
+              });
+            } else {
+              // Süresi dolmuş, bugünden 30 gün
+              newEndDate = new Date(Date.now() + thirtyDaysInMs);
+              console.log('✅ Süresi dolmuş premium yenilendi:', {
+                yeniSure: newEndDate.toISOString()
+              });
+            }
+          } else {
+            // İlk kez premium olan veya trial/basic olan, bugünden 30 gün
+            newEndDate = new Date(Date.now() + thirtyDaysInMs);
+            console.log('✅ Yeni premium üyelik başlatıldı:', {
+              yeniSure: newEndDate.toISOString()
+            });
+          }
+
+          await prisma.company.update({
+            where: { id: user.company_id },
+            data: {
+              Suspscription_package: 'premium',
+              Sub_end_time: newEndDate
+            }
+          });
+
+          // Ödeme log'u kaydet
+          await prisma.paymentLog.create({
+            data: {
+              user_id: userId,
+              status: 'success',
+              price: parseFloat(result.paidPrice),
+              currency: result.currency,
+              conversation_id: conversationId || result.conversationId || 'unknown',
+              payment_id: result.paymentId,
+              basket_id: result.basketId || 'checkout-form',
+              error_message: null
+            }
+          });
+
+          // Eğer kart kaydedilmişse kaydet (sadece cardUserKey varsa)
+          console.log('🔍 Kart kaydetme kontrol:', {
+            cardUserKey: !!result.cardUserKey,
+            binNumber: !!result.binNumber,
+            lastFourDigits: !!result.lastFourDigits,
+            cardType: !!result.cardType
+          });
+
+          // Sadece cardUserKey varsa kaydet (abonelik yenilemesi için gerekli)
+          if (result.cardUserKey && result.binNumber) {
+            try {
+              await prisma.userCard.create({
+                data: {
+                  user_id: userId,
+                  card_user_key: result.cardUserKey,
+                  card_token: result.cardToken || '',
+                  card_alias: result.cardAlias || `**** ${result.lastFourDigits}`,
+                  bin_number: result.binNumber,
+                  last_four: result.lastFourDigits,
+                  card_type: result.cardType || 'unknown',
+                  association: result.cardAssociation || 'unknown',
+                  card_family: result.cardFamily || 'unknown'
+                }
+              });
+              console.log('💳 Kart bilgileri kaydedildi (cardUserKey ile)');
+            } catch (cardSaveError) {
+              console.error('❌ Kart kaydetme hatası:', cardSaveError);
+              // Kart kaydetme hatası olursa devam et, ödeme zaten başarılı
+            }
+          } else {
+            console.log('⚠️ cardUserKey yok, kart kaydetme atlandı (abonelik yenilemesi için gereksiz)');
+          }
+
+          console.log('🎉 Premium üyelik başarıyla aktifleştirildi');
+          return res.redirect(`${process.env.FRONTEND_URL}/payment/success`);
+
+        } catch (dbError) {
+          console.error('❌ Database update error:', dbError);
+          
+          // En azından log kaydet
+          try {
+            await prisma.paymentLog.create({
+              data: {
+                user_id: userId,
+                status: 'payment_success_db_error',
+                price: parseFloat(result.paidPrice),
+                currency: result.currency,
+                conversation_id: conversationId || result.conversationId || 'unknown',
+                payment_id: result.paymentId,
+                basket_id: result.basketId || 'checkout-form',
+                error_message: `DB error: ${dbError.message}`
+              }
+            });
+          } catch (logError) {
+            console.error('❌ Failed to log DB error:', logError);
+          }
+          
+          return res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
+        }
       });
-    } catch (err) {
-      console.error('Ödeme başlatma genel hata:', err);
-      res.status(500).json({ error: 'Sunucu hatası' });
+
+    } catch (error) {
+      console.error('Checkout callback genel hata:', error);
+      res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
     }
   }
 
@@ -505,23 +432,6 @@ class PaymentController {
   }
 
   /**
-   * Ödeme başlatma fonksiyonu (gelecekte kullanılmak üzere) - DEPRECATED
-   * start3DSecurePayment kullanın
-   */
-  static async initiatePayment(req, res) {
-    try {
-      // Yönlendirme - start3DSecurePayment kullanılmalı
-      res.status(301).json({ 
-        message: 'This endpoint is deprecated. Use POST /3dsecure instead',
-        redirect: '/api/payment/3dsecure'
-      });
-    } catch (error) {
-      console.error('Payment initiation error:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-
-  /**
    * Kullanıcının ödeme geçmişini getir
    */
   static async getPaymentHistory(req, res) {
@@ -537,7 +447,14 @@ class PaymentController {
         }
       });
 
-      res.json({ success: true, payments });
+      // BigInt değerleri string'e çevir
+      const serializedPayments = payments.map(payment => ({
+        ...payment,
+        id: payment.id.toString(),
+        user_id: payment.user_id.toString()
+      }));
+
+      res.json({ success: true, payments: serializedPayments });
     } catch (error) {
       console.error('Payment history error:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -587,7 +504,13 @@ class PaymentController {
         }
       });
 
-      res.json({ success: true, cards: userCards });
+      // BigInt değerleri string'e çevir
+      const serializedCards = userCards.map(card => ({
+        ...card,
+        id: card.id.toString() // BigInt'i string'e çevir
+      }));
+
+      res.json({ success: true, cards: serializedCards });
     } catch (error) {
       console.error('Error fetching user cards:', error);
       res.status(500).json({ error: 'Kullanıcı kartları sorgulanırken hata oluştu' });
@@ -615,7 +538,14 @@ class PaymentController {
         }
       });
 
-      res.json({ success: true, card: newCard });
+      // BigInt değerleri string'e çevir
+      const serializedCard = {
+        ...newCard,
+        id: newCard.id.toString(),
+        user_id: newCard.user_id.toString()
+      };
+
+      res.json({ success: true, card: serializedCard });
     } catch (error) {
       console.error('Error saving user card:', error);
       res.status(500).json({ error: 'Kart kaydedilirken hata oluştu' });

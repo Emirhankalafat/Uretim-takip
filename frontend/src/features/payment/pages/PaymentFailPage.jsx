@@ -1,12 +1,16 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 
 const PaymentFailPage = () => {
   const navigate = useNavigate()
+  const toastShown = useRef(false)
 
   useEffect(() => {
-    toast.error('Ödeme işlemi başarısız oldu. Lütfen tekrar deneyiniz.')
+    if (!toastShown.current) {
+      toast.error('Ödeme işlemi başarısız oldu. Lütfen tekrar deneyiniz.')
+      toastShown.current = true
+    }
   }, [])
 
   return (
