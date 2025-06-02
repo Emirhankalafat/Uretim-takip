@@ -22,6 +22,35 @@ require('dotenv').config();
 // Production modunu kontrol et
 const isProduction = process.env.NODE_ENV === 'production';
 
+// İyzico 3D Secure callback - CORS'tan ÖNCE tanımla (CORS bypass)
+app.options('/api/payment/3dsecure/callback', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.status(200).end();
+});
+
+app.post('/api/payment/3dsecure/callback', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  
+  console.log('=== İyzico Callback Debug ===');
+  console.log('Origin:', req.headers.origin);
+  console.log('User-Agent:', req.headers['user-agent']);
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('Body keys:', Object.keys(req.body));
+  
+  // PaymentController.handle3DSCallback'i direkt çağır
+  const PaymentController = require('./payment/paymentController');
+  PaymentController.handle3DSCallback(req, res);
+});
+
+// JSON ve URL encoded body parser - CORS'tan önce
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
 // CORS ayarları
 if (isProduction) {
   // Production modda sadece aynı origin'den gelen istekleri kabul et
@@ -58,42 +87,12 @@ if (isProduction) {
   }));
 }
 
-app.use(express.json()); // JSON body parse
-app.use(express.urlencoded({ extended: true })); // Form data parse
-app.use(cookieParser()); // Cookie parse
-
 // Auth routes (CSRF koruması yok)
 app.use('/api/auth', authRoutes);
 
 // Public user routes (authentication gerekmez)
 app.get('/api/user/check-invite', checkInvite);
 app.post('/api/user/accept-invite', acceptInvite);
-
-// İyzico 3D Secure callback - CORS muafiyeti (dışarıdan gelir)
-app.options('/api/payment/3dsecure/callback', (req, res) => {
-  // OPTIONS preflight request için headers
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  res.status(200).end();
-});
-
-app.post('/api/payment/3dsecure/callback', (req, res, next) => {
-  // Callback için özel CORS headers
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  
-  console.log('=== İyzico Callback Debug ===');
-  console.log('Origin:', req.headers.origin);
-  console.log('User-Agent:', req.headers['user-agent']);
-  console.log('Content-Type:', req.headers['content-type']);
-  console.log('Body keys:', Object.keys(req.body));
-  
-  // PaymentController.handle3DSCallback'i direkt çağır
-  const PaymentController = require('./payment/paymentController');
-  PaymentController.handle3DSCallback(req, res);
-});
 
 // Payment routes - authentication logic payment/routes.js'de
 app.use('/api/payment', paymentRoutes);
