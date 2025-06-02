@@ -17,6 +17,9 @@ const { authenticateToken } = require('./auth/middleware/authMiddleware');
 const { csrfProtection } = require('./auth/middleware/csrfMiddleware');
 const { connectRedis } = require('./config/redis');
 const { checkInvite, acceptInvite } = require('./user/userController');
+const cron = require('node-cron');
+const subscriptionReminderJob = require('./utils/subscriptionReminder');
+const checkExpiredSubscriptions = require('./utils/subscriptionControl');
 require('dotenv').config();
 
 // Production modunu kontrol et
@@ -111,6 +114,24 @@ app.use('/api/my-jobs', authenticateToken, csrfProtection, myJobsRoutes);
 // Token yönetim scheduler'ını başlat
 // Sadece revoke et (önerilen)
 startTokenCleanupScheduler();
+
+// Sunucu başlatıldığında bir kere çalıştır (test amaçlı)
+subscriptionReminderJob();
+checkExpiredSubscriptions();
+
+// Scheduler (abonelik hatırlatma - her gün UTC 00:00'da)
+cron.schedule('0 0 * * *', () => {
+  subscriptionReminderJob();
+}, {
+  timezone: 'UTC'
+});
+
+// Scheduler (süresi geçmiş abonelik kontrolü - her saat başı)
+cron.schedule('0 * * * *', () => {
+  checkExpiredSubscriptions();
+}, {
+  timezone: 'UTC'
+});
 
 const PORT = process.env.PORT || 3001;
 

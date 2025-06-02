@@ -1,6 +1,7 @@
 const iyzipay = require('../config/iyzico');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { sendPaymentSuccessEmail } = require('../auth/utils/emailUtils');
 
 class PaymentController {
   /**
@@ -236,12 +237,12 @@ class PaymentController {
             const checkoutData = JSON.parse(checkoutDataJson);
             userId = BigInt(checkoutData.userId);
             conversationId = checkoutData.conversationId;
-            console.log('✅ Redis\'ten kullanıcı bilgisi alındı:', { userId: checkoutData.userId, conversationId });
+            console.log("✅ Redis'ten kullanıcı bilgisi alındı:", { userId: checkoutData.userId, conversationId });
             
             // Kullanıldıktan sonra token'ı sil
             await redisClient.del(`checkout_token:${token}`);
           } else {
-            console.warn('⚠️ Redis\'te token bulunamadı, conversationId\'den çözmeye çalışılıyor...');
+            console.warn("⚠️ Redis'te token bulunamadı, conversationId'den çözmeye çalışılıyor...");
             
             // Redis'te yoksa conversationId'den çözmeye çalış (fallback)
             if (result.conversationId) {
@@ -249,12 +250,12 @@ class PaymentController {
               const conversationParts = result.conversationId.split('-');
               if (conversationParts.length >= 3 && conversationParts[0] === 'checkout') {
                 userId = BigInt(conversationParts[1]);
-                console.log('✅ ConversationId\'den kullanıcı bilgisi çözüldü:', { userId: conversationParts[1], conversationId });
+                console.log("✅ ConversationId'den kullanıcı bilgisi çözüldü:", { userId: conversationParts[1], conversationId });
               } else {
                 throw new Error('Invalid conversationId format');
               }
             } else {
-              throw new Error('Ne Redis\'te token ne de conversationId bulunamadı');
+              throw new Error("Ne Redis'te token ne de conversationId bulunamadı");
             }
           }
         } catch (redisError) {
@@ -271,7 +272,7 @@ class PaymentController {
           // Kullanıcının şirketini premium yap
           const user = await prisma.user.findUnique({
             where: { id: userId },
-            select: { company_id: true }
+            select: { company_id: true, Mail: true, Name: true }
           });
 
           if (!user) {
@@ -283,11 +284,13 @@ class PaymentController {
             where: { id: user.company_id },
             select: { 
               Suspscription_package: true, 
-              Sub_end_time: true 
+              Sub_end_time: true,
+              Name: true
             }
           });
 
           let newEndDate;
+          let isRenewal = false;
           const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000; // 30 gün
 
           if (company?.Suspscription_package === 'premium' && company?.Sub_end_time) {
@@ -302,12 +305,14 @@ class PaymentController {
                 eskiSure: currentEndDate.toISOString(),
                 yeniSure: newEndDate.toISOString()
               });
+              isRenewal = true;
             } else {
               // Süresi dolmuş, bugünden 30 gün
               newEndDate = new Date(Date.now() + thirtyDaysInMs);
               console.log('✅ Süresi dolmuş premium yenilendi:', {
                 yeniSure: newEndDate.toISOString()
               });
+              isRenewal = false;
             }
           } else {
             // İlk kez premium olan veya trial/basic olan, bugünden 30 gün
@@ -315,6 +320,7 @@ class PaymentController {
             console.log('✅ Yeni premium üyelik başlatıldı:', {
               yeniSure: newEndDate.toISOString()
             });
+            isRenewal = false;
           }
 
           await prisma.company.update({
@@ -347,6 +353,7 @@ class PaymentController {
             cardType: !!result.cardType
           });
 
+          let cardInfo = null;
           // Sadece cardUserKey varsa kaydet (abonelik yenilemesi için gerekli)
           if (result.cardUserKey && result.binNumber) {
             try {
@@ -364,12 +371,34 @@ class PaymentController {
                 }
               });
               console.log('💳 Kart bilgileri kaydedildi (cardUserKey ile)');
+              cardInfo = {
+                lastFour: result.lastFourDigits,
+                cardType: result.cardType || 'unknown',
+                cardAlias: result.cardAlias || `**** ${result.lastFourDigits}`
+              };
             } catch (cardSaveError) {
               console.error('❌ Kart kaydetme hatası:', cardSaveError);
               // Kart kaydetme hatası olursa devam et, ödeme zaten başarılı
             }
           } else {
             console.log('⚠️ cardUserKey yok, kart kaydetme atlandı (abonelik yenilemesi için gereksiz)');
+            // Kart kaydedilmediyse de mailde kart bilgisi gösterilmesin
+            cardInfo = null;
+          }
+
+          // Ödeme başarılı mail gönder
+          try {
+            await sendPaymentSuccessEmail(
+              user.Mail,
+              user.Name || '',
+              result.paidPrice,
+              newEndDate,
+              cardInfo,
+              isRenewal,
+              company.Name || ''
+            );
+          } catch (mailErr) {
+            console.error('Ödeme başarılı mail gönderilemedi:', mailErr);
           }
 
           console.log('🎉 Premium üyelik başarıyla aktifleştirildi');

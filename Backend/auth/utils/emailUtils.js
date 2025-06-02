@@ -457,9 +457,167 @@ const sendPasswordResetEmail = async (userEmail, userName, resetToken) => {
   }
 };
 
+// Ödeme başarılı email gönder
+const sendPaymentSuccessEmail = async (userEmail, userName, price, endDate, cardInfo = null, isRenewal = false, companyName = '') => {
+  try {
+    const transporter = createTransporter();
+    if (!transporter) {
+      console.warn('Email transporter oluşturulamadı. Email ayarları kontrol edin.');
+      return false;
+    }
+    const colors = getThemeColors();
+    const environmentBadge = getEnvironmentBadge();
+    const subject = isDevelopment
+      ? `[DEV] ${companyName} - Premium Üyelik Başarılı`
+      : `${companyName} - Premium Üyelik Başarılı`;
+    let cardHtml = '';
+    if (cardInfo && cardInfo.lastFour && cardInfo.cardType) {
+      cardHtml = `
+        <div style="background: #f0f9ff; border: 1px solid #0ea5e9; padding: 16px; border-radius: 12px; margin: 24px 0;">
+          <h4 style="color: #0c4a6e; font-size: 16px; font-weight: 600; margin: 0 0 12px;">Kayıtlı Kart Bilgisi</h4>
+          <p style="color: #374151; font-size: 15px; margin: 0;">
+            Kart: <strong>${cardInfo.cardType}</strong> **** **** **** <strong>${cardInfo.lastFour}</strong><br/>
+            Kart Takma Adı: <strong>${cardInfo.cardAlias || ''}</strong>
+          </p>
+        </div>
+      `;
+    }
+    const mainMessage = isRenewal
+      ? `Şirketiniz (${companyName}) için premium üyelik başarıyla <b>yenilendi</b>.`
+      : `Şirketiniz (${companyName}) için premium üyelik <b>aktifleştirildi</b>.`;
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: userEmail,
+      subject: subject,
+      html: `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: ${colors.bgGradient}; padding: 40px 20px; border-radius: 20px;">
+          <div style="background: white; padding: 40px; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+            <div style="text-align: center; margin-bottom: 30px;">
+              ${environmentBadge}
+              <div style="width: 64px; height: 64px; background: ${colors.gradient}; border-radius: 16px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                <svg width="32" height="32" fill="white" viewBox="0 0 24 24">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <h1 style="color: #1f2937; font-size: 28px; font-weight: bold; margin: 0;">${companyName} - Premium Üyelik</h1>
+              <p style="color: #6b7280; font-size: 16px; margin: 10px 0 0;">Üretim Takip Sistemi</p>
+              ${isDevelopment ? '<p style="color: #ef4444; font-size: 12px; font-weight: 600;">DEVELOPMENT ENVIRONMENT</p>' : ''}
+            </div>
+            <div style="background: #f9fafb; padding: 24px; border-radius: 12px; margin: 24px 0;">
+              <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0;">
+                Sayın <strong>${userName}</strong>,<br><br>
+                Ödemeniz başarıyla alınmıştır. ${mainMessage}<br>
+                <strong>Ödenen Tutar:</strong> ${price} TL<br>
+                <strong>Bir sonraki ödeme/yenileme tarihi:</strong> ${endDate ? new Date(endDate).toLocaleDateString('tr-TR') : '-'}
+              </p>
+            </div>
+            ${cardHtml}
+            <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 24px 0;">
+              <p style="color: #92400e; font-size: 14px; margin: 0; display: flex; align-items: center;">
+                <span style="margin-right: 8px;">🎉</span>
+                Şirketinizin premium üyeliği ile tüm özelliklerden yararlanabilirsiniz.
+              </p>
+            </div>
+            <hr style="margin: 32px 0; border: none; border-top: 1px solid #e5e7eb;">
+            <div style="text-align: center;">
+              <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                Bu email otomatik olarak gönderilmiştir. Lütfen yanıtlamayın.
+              </p>
+              <p style="color: #9ca3af; font-size: 12px; margin: 8px 0 0;">
+                © 2024 Üretim Takip Sistemi. Tüm hakları saklıdır.
+              </p>
+              ${isDevelopment ? '<p style="color: #ef4444; font-size: 10px; margin: 4px 0 0;">Development Environment - Test Email</p>' : ''}
+            </div>
+          </div>
+        </div>
+      `
+    };
+    await transporter.sendMail(mailOptions);
+    console.log(`Ödeme başarılı email gönderildi [${process.env.NODE_ENV?.toUpperCase()}]:`, userEmail);
+    return true;
+  } catch (error) {
+    console.error('Ödeme başarılı email gönderme hatası:', error);
+    return false;
+  }
+};
+
+// Abonelik bitişi yaklaşan şirketler için superadmin'e uyarı maili gönder
+const sendSubscriptionReminderEmail = async (adminEmail, adminName, companyName, daysLeft, endDate) => {
+  try {
+    const transporter = createTransporter();
+    if (!transporter) {
+      console.warn('Email transporter oluşturulamadı. Email ayarları kontrol edin.');
+      return false;
+    }
+    const colors = getThemeColors();
+    const environmentBadge = getEnvironmentBadge();
+    let dayText = '';
+    if (daysLeft === 0) dayText = 'Bugün';
+    else if (daysLeft === 1) dayText = 'Yarın';
+    else dayText = daysLeft + ' gün sonra';
+    const subject = isDevelopment
+      ? `[DEV] ${companyName} - Premium Abonelik Hatırlatma`
+      : `${companyName} - Premium Abonelik Hatırlatma`;
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: adminEmail,
+      subject: subject,
+      html: `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: ${colors.bgGradient}; padding: 40px 20px; border-radius: 20px;">
+          <div style="background: white; padding: 40px; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+            <div style="text-align: center; margin-bottom: 30px;">
+              ${environmentBadge}
+              <div style="width: 64px; height: 64px; background: ${colors.gradient}; border-radius: 16px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                <svg width="32" height="32" fill="white" viewBox="0 0 24 24">
+                  <path d="M12 8v4l3 3m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <h1 style="color: #1f2937; font-size: 26px; font-weight: bold; margin: 0;">${companyName} - Premium Abonelik Hatırlatma</h1>
+              <p style="color: #6b7280; font-size: 16px; margin: 10px 0 0;">Üretim Takip Sistemi</p>
+              ${isDevelopment ? '<p style="color: #ef4444; font-size: 12px; font-weight: 600;">DEVELOPMENT ENVIRONMENT</p>' : ''}
+            </div>
+            <div style="background: #f9fafb; padding: 24px; border-radius: 12px; margin: 24px 0;">
+              <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0;">
+                Sayın <strong>${adminName}</strong>,<br><br>
+                <b>${companyName}</b> şirketinin premium aboneliğinin bitiş tarihi: <b>${new Date(endDate).toLocaleDateString('tr-TR')}</b><br>
+                <span style="color: #b91c1c; font-weight: bold;">${dayText} abonelik süreniz dolacak!</span><br><br>
+                Kesintisiz hizmet için lütfen ödeme işlemini tamamlayınız.
+              </p>
+            </div>
+            <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 24px 0;">
+              <p style="color: #92400e; font-size: 14px; margin: 0; display: flex; align-items: center;">
+                <span style="margin-right: 8px;">⏰</span>
+                Abonelik süresi dolduğunda premium özelliklere erişiminiz kısıtlanacaktır.
+              </p>
+            </div>
+            <hr style="margin: 32px 0; border: none; border-top: 1px solid #e5e7eb;">
+            <div style="text-align: center;">
+              <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                Bu email otomatik olarak gönderilmiştir. Lütfen yanıtlamayın.
+              </p>
+              <p style="color: #9ca3af; font-size: 12px; margin: 8px 0 0;">
+                © 2024 Üretim Takip Sistemi. Tüm hakları saklıdır.
+              </p>
+              ${isDevelopment ? '<p style="color: #ef4444; font-size: 10px; margin: 4px 0 0;">Development Environment - Test Email</p>' : ''}
+            </div>
+          </div>
+        </div>
+      `
+    };
+    await transporter.sendMail(mailOptions);
+    console.log(`Abonelik hatırlatma email gönderildi [${process.env.NODE_ENV?.toUpperCase()}]:`, adminEmail);
+    return true;
+  } catch (error) {
+    console.error('Abonelik hatırlatma email gönderme hatası:', error);
+    return false;
+  }
+};
+
 module.exports = {
   sendConfirmEmail,
   sendInviteEmail,
   sendPasswordResetEmail,
+  sendPaymentSuccessEmail,
+  sendSubscriptionReminderEmail,
   isEmailConfigured
 }; 
