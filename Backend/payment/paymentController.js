@@ -78,10 +78,12 @@ class PaymentController {
       }
 
       // 3. BAŞARILI ÖDEMELER İÇİN diğer veri kontrolü
-      if (!paymentId || !conversationData) {
-        console.warn('❌ Başarılı ödeme ama eksik veri:', {
+      if (!paymentId) {
+        console.warn('❌ Başarılı ödeme ama paymentId eksik:', {
           paymentId: !!paymentId,
           conversationData: !!conversationData,
+          mdStatus,
+          status,
           body: JSON.stringify(req.body, null, 2)
         });
         
@@ -90,13 +92,13 @@ class PaymentController {
           await prisma.paymentLog.create({
             data: {
               user_id: userId,
-              status: 'incomplete_data',
+              status: 'missing_payment_id',
               price: 0,
               currency: 'TRY',
               conversation_id: conversationId,
               payment_id: paymentId || 'missing_payment_id',
               basket_id: 'incomplete_callback',
-              error_message: 'Başarılı görünen ödeme ama eksik callback verisi'
+              error_message: 'Başarılı görünen ödeme ama paymentId eksik'
             }
           });
         } catch (logError) {
@@ -104,6 +106,17 @@ class PaymentController {
         }
 
         return res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
+      }
+
+      // conversationData sandbox'ta bazen boş gelebilir, uyarı ver ama devam et
+      if (!conversationData) {
+        console.warn('⚠️ conversationData boş (sandbox normal olabilir):', {
+          paymentId,
+          conversationData: conversationData || 'EMPTY',
+          mdStatus,
+          status,
+          environment: process.env.NODE_ENV
+        });
       }
 
       console.log('✅ Callback verisi doğrulandı:', {
@@ -115,16 +128,32 @@ class PaymentController {
       });
 
       // İyzico ödeme doğrulamaya geç (sadece başarılı ödemeler için)
+      const iyzicoRequest = {
+        locale: 'tr',
+        conversationId,
+        paymentId,
+        conversationData: conversationData || '' // Boş string olsa bile gönder
+      };
+
+      console.log('🔍 İyzico doğrulama request:', {
+        conversationId,
+        paymentId,
+        conversationDataExists: !!conversationData,
+        conversationDataLength: conversationData ? conversationData.length : 0
+      });
+
       iyzipay.threedsPayment.create(
-        {
-          locale: 'tr',
-          conversationId,
-          paymentId,
-          conversationData
-        },
+        iyzicoRequest,
         async (err, rawResult) => {
           if (err) {
-            console.error('❌ İyzico doğrulama hatası:', err);
+            console.error('❌ İyzico doğrulama hatası:', {
+              errorMessage: err.message,
+              errorCode: err.errorCode,
+              errorGroup: err.errorGroup,
+              conversationId,
+              paymentId,
+              conversationDataProvided: !!conversationData
+            });
             
             // Hatalı doğrulama denemesini logla
             try {
@@ -137,7 +166,7 @@ class PaymentController {
                   conversation_id: conversationId,
                   payment_id: paymentId,
                   basket_id: 'iyzico_verification_failed',
-                  error_message: err.message || 'İyzico doğrulama hatası'
+                  error_message: `İyzico doğrulama hatası: ${err.message} (Code: ${err.errorCode || 'unknown'})`
                 }
               });
             } catch (logError) {
