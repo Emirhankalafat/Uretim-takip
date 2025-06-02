@@ -15,7 +15,7 @@ const LoginPage = () => {
   // Sayfa yüklendiğinde loading state'ini temizle
   useEffect(() => {
     dispatch(clearLoading())
-  }, [])
+  }, [dispatch])
 
   // Eğer kullanıcı zaten giriş yapmışsa dashboard'a yönlendir
   useEffect(() => {

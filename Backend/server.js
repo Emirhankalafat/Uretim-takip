@@ -11,6 +11,7 @@ const productStepsRoutes = require('./product-steps/productStepsRoutes');
 const customerRoutes = require('./customer/customerRoutes');
 const orderRoutes = require('./orders/orderRoutes');
 const myJobsRoutes = require('./my-jobs/myJobsRoutes');
+const paymentRoutes = require('./payment/routes');
 const { startTokenCleanupScheduler } = require('./auth/utils/scheduler');
 const { authenticateToken } = require('./auth/middleware/authMiddleware');
 const { csrfProtection } = require('./auth/middleware/csrfMiddleware');
@@ -41,6 +42,7 @@ if (isProduction) {
 }
 
 app.use(express.json()); // JSON body parse
+app.use(express.urlencoded({ extended: true })); // Form data parse
 app.use(cookieParser()); // Cookie parse
 
 // Auth routes (CSRF koruması yok)
@@ -49,6 +51,48 @@ app.use('/api/auth', authRoutes);
 // Public user routes (authentication gerekmez)
 app.get('/api/user/check-invite', checkInvite);
 app.post('/api/user/accept-invite', acceptInvite);
+
+// Payment routes - özel authentication yapılandırması
+// 3dsecure route authentication gerektirir
+app.post('/api/payment/3dsecure', (req, res, next) => {
+  // Token'ı header'dan veya form data'dan oku
+  let token = null;
+  
+  // Önce header'dan dene
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  }
+  
+  // Header'da yoksa form data'dan dene
+  if (!token && req.body.authorization) {
+    const formAuth = req.body.authorization;
+    if (formAuth.startsWith('Bearer ')) {
+      token = formAuth.substring(7);
+    }
+  }
+  
+  if (!token) {
+    return res.status(401).send('<html><body><h1>Unauthorized - Token required</h1></body></html>');
+  }
+  
+  // Token'ı header'a koy ki authenticateToken middleware'i çalışsın
+  req.headers.authorization = `Bearer ${token}`;
+  
+  // Authentication middleware'ini çağır
+  authenticateToken(req, res, (err) => {
+    if (err) {
+      return res.status(401).send('<html><body><h1>Unauthorized - Invalid token</h1></body></html>');
+    }
+    
+    // PaymentController.start3DSecurePayment'ı direkt çağır
+    const PaymentController = require('./payment/paymentController');
+    PaymentController.start3DSecurePayment(req, res);
+  });
+});
+
+// Diğer payment routes - authentication gerekmez (callback için)
+app.use('/api/payment', paymentRoutes);
 
 // Diğer tüm route'lar için auth + CSRF koruması
 app.use('/api/permissions', authenticateToken, csrfProtection, permissionRoutes);

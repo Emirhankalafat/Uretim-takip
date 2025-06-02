@@ -4,8 +4,28 @@ const prisma = new PrismaClient();
 
 const authenticateToken = async (req, res, next) => {
   try {
-    // Cookie'den access token'ı al
-    const token = req.cookies.accessToken;
+    // Token'ı birden fazla yerden almaya çalış
+    let token = req.cookies.accessToken; // Cookie'den
+    
+    // Eğer cookie'de yoksa header'dan al
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
+    
+    // Eğer hala yoksa form data'dan al (ödeme sayfası için)
+    if (!token && req.body.accessToken) {
+      token = req.body.accessToken;
+      // Form data'dan aldığımız token'ı cookie'ye set et ki devamında kullanılabilsin
+      res.cookie('accessToken', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000 // 15 dakika
+      });
+    }
 
     if (!token) {
       return res.status(401).json({ message: 'Erişim token\'ı bulunamadı. Lütfen giriş yapın.' });

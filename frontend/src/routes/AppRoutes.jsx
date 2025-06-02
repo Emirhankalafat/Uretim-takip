@@ -29,6 +29,11 @@ const OrdersPage = lazy(() => import('../features/orders/pages/OrdersPage'))
 const OrderDetailPage = lazy(() => import('../features/orders/pages/OrderDetailPage'))
 const MyJobsPage = lazy(() => import('../features/my-jobs/pages/MyJobsPage'))
 
+// Payment Pages
+const PaymentPage = lazy(() => import('../features/payment/pages/PaymentPage'))
+const PaymentSuccessPage = lazy(() => import('../features/payment/pages/PaymentSuccessPage'))
+const PaymentFailPage = lazy(() => import('../features/payment/pages/PaymentFailPage'))
+
 // Loading Component
 const LoadingScreen = ({ message = "Sayfa yükleniyor..." }) => {
   return (
@@ -175,6 +180,24 @@ const AppRoutes = () => {
         } 
       />
       
+      {/* Payment Success/Fail Pages - Public routes */}
+      <Route 
+        path="/payment/success" 
+        element={
+          <PublicRoute>
+            <PaymentSuccessPage />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/payment/fail" 
+        element={
+          <PublicRoute>
+            <PaymentFailPage />
+          </PublicRoute>
+        } 
+      />
+      
       {/* Protected Routes */}
       <Route 
         path="/dashboard" 
@@ -209,6 +232,16 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <UserInvitePage />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Payment Route */}
+      <Route 
+        path="/payment" 
+        element={
+          <ProtectedRoute>
+            <PaymentPage />
           </ProtectedRoute>
         } 
       />

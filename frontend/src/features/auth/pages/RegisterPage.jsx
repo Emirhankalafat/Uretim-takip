@@ -21,6 +21,11 @@ const RegisterPage = () => {
 
   const password = watch('password')
 
+  // Sayfa yüklendiğinde loading ve error state'ini temizle
+  useEffect(() => {
+    dispatch(clearLoading())
+  }, [dispatch])
+
   // Eğer kullanıcı zaten giriş yapmışsa dashboard'a yönlendir
   useEffect(() => {
     if (isAuthenticated) {

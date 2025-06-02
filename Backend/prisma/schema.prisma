@@ -44,6 +44,8 @@ model User {
   passwordResetTokens PasswordResetToken[]
   responsibleSteps ProductSteps[]
   orderSteps   OrderSteps[]
+  userCards    UserCard[]
+  paymentLogs  PaymentLog[]
 
   @@map("users")
 }
@@ -238,4 +240,42 @@ enum Priority {
   NORMAL
   HIGH
   URGENT
+}
+
+model UserCard {
+  id             BigInt   @id @default(autoincrement())
+  user           User     @relation(fields: [user_id], references: [id])
+  user_id        BigInt
+
+  card_user_key  String
+  card_token     String
+  card_alias     String
+  bin_number     String
+  last_four      String
+  card_type      String
+  association    String?
+  card_family    String?
+
+  created_at     DateTime @default(now())
+
+  @@unique([user_id, card_token])
+  @@map("user_cards")
+}
+
+model PaymentLog {
+  id              BigInt   @id @default(autoincrement())
+  user            User     @relation(fields: [user_id], references: [id])
+  user_id         BigInt
+
+  conversation_id String
+  price           Float
+  currency        String   @default("TRY")
+  status          String
+  payment_id      String
+  basket_id       String
+  error_message   String?
+
+  created_at      DateTime @default(now())
+
+  @@map("payment_logs")
 }
