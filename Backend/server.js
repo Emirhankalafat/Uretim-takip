@@ -36,13 +36,10 @@ if (isProduction) {
         'https://www.xn--retimgo-m2a.com'
       ].filter(Boolean); // null/undefined değerleri filtrele
       
-      // İyzico callback'leri için özel kontrol
-      const isIyzicoCallback = req?.path === '/api/payment/3dsecure/callback';
-      
-      if (!origin || allowedOrigins.includes(origin) || isIyzicoCallback) {
+      if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.log('❌ CORS blocked origin:', origin, 'for path:', req?.path);
+        console.log('❌ CORS blocked origin:', origin);
         callback(new Error('Not allowed by CORS'));
       }
     },
