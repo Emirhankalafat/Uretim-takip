@@ -5,7 +5,6 @@ import { useForm } from 'react-hook-form'
 import { loginStart, loginSuccess, loginFailure, clearLoading } from '../authSlice'
 import authService from '../services/authService'
 import Toast from '../../../components/Toast'
-import logo from '/src/assets/Logo.png'
 
 const LoginPage = () => {
   const dispatch = useDispatch()
@@ -83,7 +82,7 @@ const LoginPage = () => {
       <div className="max-w-md w-full space-y-8 relative z-10">
         {/* Logo/Brand Section */}
         <div className="text-center">
-          <img src={logo} alt="Logo" className="mx-auto h-20 w-20 mb-6" />
+          <img src="/logo.png" alt="Logo" className="mx-auto h-20 w-20 mb-6" />
           <h2 className="text-4xl font-bold text-white mb-2">
             Hoş Geldiniz
           </h2>
