@@ -9,13 +9,13 @@ async function subscriptionReminderJob() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Sadece premium şirketleri çek
-    console.log('📋 Premium şirketler sorgulanıyor...');
+    // Sadece aktif premium şirketleri çek (süresi bitmemiş olanlar)
+    console.log('📋 Aktif premium şirketler sorgulanıyor...');
     const companies = await prisma.company.findMany({
       where: {
         Suspscription_package: "premium",
         Sub_end_time: {
-          not: undefined
+          gt: today // Sadece süresi bugünden büyük olanlar (bitmemiş olanlar)
         }
       },
       select: {
@@ -24,7 +24,7 @@ async function subscriptionReminderJob() {
         Sub_end_time: true
       }
     });
-    console.log(`✅ ${companies.length} adet premium şirket bulundu.`);
+    console.log(`✅ ${companies.length} adet aktif premium şirket bulundu.`);
 
     for (const company of companies) {
       if (!company.Sub_end_time) continue;
@@ -35,7 +35,8 @@ async function subscriptionReminderJob() {
       
       console.log(`🏢 Şirket: ${company.Name}, Kalan Gün: ${daysLeft}`);
       
-      if (![7, 3, 0].includes(daysLeft)) continue;
+      // Sadece 7, 3 ve 1 gün kaldığında hatırlat
+      if (![7, 3, 1].includes(daysLeft)) continue;
 
       // Şirketin superadminini bul
       console.log(`👤 ${company.Name} için superadmin aranıyor...`);
@@ -64,7 +65,7 @@ async function subscriptionReminderJob() {
         daysLeft,
         endDate
       );
-      console.log(`✅ ${company.Name} için mail gönderildi.`);
+      console.log(`✅ ${company.Name} için hatırlatma maili gönderildi.`);
     }
     console.log('✅ Subscription reminder job başarıyla tamamlandı.');
   } catch (err) {

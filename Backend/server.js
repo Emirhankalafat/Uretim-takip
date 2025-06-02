@@ -116,19 +116,23 @@ app.use('/api/my-jobs', authenticateToken, csrfProtection, myJobsRoutes);
 startTokenCleanupScheduler();
 
 // Sunucu başlatıldığında bir kere çalıştır (test amaçlı)
-subscriptionReminderJob();
-checkExpiredSubscriptions();
+async function runInitialJobs() {
+  await checkExpiredSubscriptions(); // Önce süresi bitenleri kontrol et
+  await subscriptionReminderJob();   // Sonra hatırlatmaları yap
+}
 
-// Scheduler (abonelik hatırlatma - her gün UTC 00:00'da)
-cron.schedule('0 0 * * *', () => {
-  subscriptionReminderJob();
-}, {
-  timezone: 'UTC'
-});
+// İlk çalıştırma
+runInitialJobs();
 
-// Scheduler (süresi geçmiş abonelik kontrolü - her saat başı)
-cron.schedule('0 * * * *', () => {
-  checkExpiredSubscriptions();
+// Scheduler (her saat başı kontrol, sadece UTC 00:00'da hatırlatma)
+cron.schedule('0 * * * *', async () => {
+  console.log('🕐 Saatlik abonelik kontrolü başlatılıyor...');
+  await checkExpiredSubscriptions();
+  const now = new Date();
+  if (now.getUTCHours() === 0 && now.getUTCMinutes() === 0) {
+    console.log('🌅 UTC 00:00 - Günlük abonelik hatırlatması başlatılıyor...');
+    await subscriptionReminderJob();
+  }
 }, {
   timezone: 'UTC'
 });

@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { sendSubscriptionReminderEmail } = require('../auth/utils/emailUtils');
 
 // Süresi geçmiş abonelikleri kontrol eden ve basic'e döndüren fonksiyon
 async function checkExpiredSubscriptions() {
@@ -31,6 +32,21 @@ async function checkExpiredSubscriptions() {
     for (const company of expiredCompanies) {
       console.log(`🏢 ${company.Name} şirketi için paket değişikliği yapılıyor (${company.Suspscription_package} -> basic)`);
       
+      // Şirketin superadminini bul
+      console.log(`👤 ${company.Name} için superadmin aranıyor...`);
+      const superadmin = await prisma.user.findFirst({
+        where: {
+          company_id: company.id,
+          is_SuperAdmin: true,
+          is_active: true
+        },
+        select: {
+          Mail: true,
+          Name: true
+        }
+      });
+
+      // Paketi basic'e çevir
       await prisma.company.update({
         where: {
           id: company.id
@@ -39,6 +55,21 @@ async function checkExpiredSubscriptions() {
           Suspscription_package: "basic"
         }
       });
+
+      // Superadmin varsa üyelik bitti maili gönder
+      if (superadmin) {
+        console.log(`📧 ${company.Name} şirketi için ${superadmin.Mail} adresine üyelik bitti maili gönderiliyor...`);
+        await sendSubscriptionReminderEmail(
+          superadmin.Mail,
+          superadmin.Name || '',
+          company.Name || '',
+          0, // 0 gün kaldı = bitti
+          company.Sub_end_time
+        );
+        console.log(`✅ ${company.Name} için üyelik bitti maili gönderildi.`);
+      } else {
+        console.log(`⚠️ ${company.Name} için superadmin bulunamadı!`);
+      }
 
       console.log(`✅ ${company.Name} şirketi basic pakete geçirildi.`);
     }
