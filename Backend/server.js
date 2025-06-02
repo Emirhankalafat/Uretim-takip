@@ -22,7 +22,12 @@ require('dotenv').config();
 // Production modunu kontrol et
 const isProduction = process.env.NODE_ENV === 'production';
 
-// İyzico 3D Secure callback - CORS'tan ÖNCE tanımla (CORS bypass)
+// JSON ve URL encoded body parser - CORS'tan önce
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// İyzico 3D Secure callback - Body parser'dan sonra, CORS'tan ÖNCE tanımla
 app.options('/api/payment/3dsecure/callback', (req, res) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -39,17 +44,13 @@ app.post('/api/payment/3dsecure/callback', (req, res, next) => {
   console.log('Origin:', req.headers.origin);
   console.log('User-Agent:', req.headers['user-agent']);
   console.log('Content-Type:', req.headers['content-type']);
-  console.log('Body keys:', Object.keys(req.body));
+  console.log('Body keys:', req.body ? Object.keys(req.body) : 'Body is null/undefined');
+  console.log('Raw body:', req.body);
   
   // PaymentController.handle3DSCallback'i direkt çağır
   const PaymentController = require('./payment/paymentController');
   PaymentController.handle3DSCallback(req, res);
 });
-
-// JSON ve URL encoded body parser - CORS'tan önce
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
 
 // CORS ayarları
 if (isProduction) {
