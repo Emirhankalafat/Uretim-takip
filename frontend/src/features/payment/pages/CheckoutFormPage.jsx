@@ -1,18 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSelector } from 'react-redux'
 import { Navigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import paymentService from '../services/paymentService'
+import api from '../../../services/api'
 
 const CheckoutFormPage = () => {
   const { user } = useSelector((state) => state.auth)
-  
-  // SuperAdmin kontrolü
-  if (!user?.is_SuperAdmin) {
-    return <Navigate to="/dashboard" replace />
-  }
-  
-  const [loading, setLoading] = useState(false)
+  const [profileData, setProfileData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [addressData, setAddressData] = useState({
     // Billing Address
     billingContactName: '',
@@ -30,6 +27,79 @@ const CheckoutFormPage = () => {
     registerCard: false,
     useShippingAsBilling: true
   })
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await api.get('/auth/dashboard-profile')
+        setProfileData(response.data.profile)
+      } catch (err) {
+        setError('Profil verisi alınamadı.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchProfile()
+  }, [])
+
+  // SuperAdmin kontrolü (hem user hem profileData'dan kontrol et)
+  if (!user?.is_SuperAdmin) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Profil verisi yükleniyor...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !profileData?.company_stats) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Bir hata oluştu</h2>
+          <p className="text-gray-600 mb-4">{error || 'Şirket bilgisi alınamadı.'}</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Abonelik durumu kontrolü (güncel API verisiyle)
+  const companyStats = profileData.company_stats
+  const subscriptionPackage = companyStats?.subscription_package || 'trial'
+  const subscriptionEnd = companyStats?.subscription_end
+  let remainingDays = 0
+  if (subscriptionEnd) {
+    const currentDate = new Date()
+    const endDate = new Date(subscriptionEnd)
+    const timeDiff = endDate.getTime() - currentDate.getTime()
+    remainingDays = Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)))
+  }
+
+  // Premium ise ve 7 günden fazla kaldıysa erişim engelle
+  if (subscriptionPackage === 'premium' && remainingDays > 7) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
+          <div className="text-4xl mb-4">🎉</div>
+          <h2 className="text-xl font-bold mb-2">Premium üyeliğiniz aktif!</h2>
+          <p className="text-gray-700 mb-4">
+            Premium üyeliğinizin bitmesine <b>{remainingDays}</b> gün kaldı.<br/>
+            Şu anda ödeme yapmanıza gerek yok. Üyeliğinizin bitiş tarihine 7 günden az kaldığında buradan uzatma işlemi yapabilirsiniz.
+          </p>
+          <a href="/dashboard" className="inline-block mt-4 px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">Dashboard'a Dön</a>
+        </div>
+      </div>
+    )
+  }
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target

@@ -1,17 +1,22 @@
 import { useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 
 const PaymentFailPage = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const toastShown = useRef(false)
+
+  // URL'den errorMessage parametresini al
+  const params = new URLSearchParams(location.search)
+  const errorMessage = params.get('errorMessage')
 
   useEffect(() => {
     if (!toastShown.current) {
-      toast.error('Ödeme işlemi başarısız oldu. Lütfen tekrar deneyiniz.')
+      toast.error(errorMessage ? `Ödeme başarısız: ${errorMessage}` : 'Ödeme işlemi başarısız oldu. Lütfen tekrar deneyiniz.')
       toastShown.current = true
     }
-  }, [])
+  }, [errorMessage])
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -24,7 +29,9 @@ const PaymentFailPage = () => {
         
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Ödeme Başarısız</h2>
         <p className="text-gray-600 mb-6">
-          Ödeme işleminiz tamamlanamadı. Lütfen kart bilgilerinizi kontrol edip tekrar deneyiniz.
+          {errorMessage
+            ? <>Ödeme işleminiz tamamlanamadı.<br /><b>Hata:</b> {errorMessage}</>
+            : 'Ödeme işleminiz tamamlanamadı. Lütfen kart bilgilerinizi kontrol edip tekrar deneyiniz.'}
         </p>
         
         <div className="space-y-3">

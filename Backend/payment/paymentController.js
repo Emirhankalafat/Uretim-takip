@@ -201,7 +201,50 @@ class PaymentController {
             errorCode: result.errorCode,
             errorMessage: result.errorMessage
           });
-          return res.redirect(`${process.env.FRONTEND_URL}/payment/fail`);
+          // errorMessage varsa query string ile yönlendir
+          const errorMsg = encodeURIComponent(result.errorMessage || '')
+
+          // Başarısız ödeme logu ekle
+          try {
+            // Kullanıcı ve conversationId'yi Redis veya conversationId'den çöz
+            let userId = null;
+            let conversationId = null;
+            try {
+              const { redisClient } = require('../config/redis');
+              const checkoutDataJson = await redisClient.get(`checkout_token:${token}`);
+              if (checkoutDataJson) {
+                const checkoutData = JSON.parse(checkoutDataJson);
+                userId = BigInt(checkoutData.userId);
+                conversationId = checkoutData.conversationId;
+              } else if (result.conversationId) {
+                conversationId = result.conversationId;
+                const conversationParts = result.conversationId.split('-');
+                if (conversationParts.length >= 3 && conversationParts[0] === 'checkout') {
+                  userId = BigInt(conversationParts[1]);
+                }
+              }
+            } catch (e) {
+              // ignore
+            }
+            if (userId && conversationId) {
+              await prisma.paymentLog.create({
+                data: {
+                  user_id: userId,
+                  status: 'fail',
+                  price: parseFloat(result.paidPrice || 0),
+                  currency: result.currency || 'TRY',
+                  conversation_id: conversationId,
+                  payment_id: result.paymentId || '-',
+                  basket_id: result.basketId || '-',
+                  error_message: `${result.errorCode || ''} ${result.errorMessage || ''}`.trim()
+                }
+              });
+            }
+          } catch (logErr) {
+            console.error('❌ Failed to log payment fail:', logErr);
+          }
+
+          return res.redirect(`${process.env.FRONTEND_URL}/payment/fail${errorMsg ? `?errorMessage=${errorMsg}` : ''}`);
         }
 
         console.log('✅ Checkout Form payment successful:', {

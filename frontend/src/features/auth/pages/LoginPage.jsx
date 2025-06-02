@@ -82,6 +82,7 @@ const LoginPage = () => {
       <div className="max-w-md w-full space-y-8 relative z-10">
         {/* Logo/Brand Section */}
         <div className="text-center">
+          {/* LOGO: Buraya kendi logonuzu ekleyebilirsiniz. Örnek: <img src=\"/src/assets/logo.png\" alt=\"Logo\" className=\"mx-auto h-20 w-20 mb-6\" /> */}
           <div className="mx-auto h-20 w-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-2xl">
             <svg className="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -90,8 +91,11 @@ const LoginPage = () => {
           <h2 className="text-4xl font-bold text-white mb-2">
             Hoş Geldiniz
           </h2>
-          <p className="text-blue-200 text-lg">
-            Üretim Takip Sistemi
+          <p className="text-blue-200 text-lg font-semibold">
+            Üretim süreçlerinizi kolayca yönetin, verimliliği artırın. Modern ve kullanıcı dostu üretim takip platformu.
+          </p>
+          <p className="text-blue-200 text-base mt-2">
+            Tüm üretim adımlarınızı tek panelden kontrol edin.
           </p>
         </div>
         
