@@ -75,9 +75,6 @@ router.post('/3dsecure', (req, res, next) => {
   });
 });
 
-// 3D Secure callback route - Public (authentication gerekmez)
-router.post('/3dsecure/callback', PaymentController.handle3DSCallback);
-
 // Ödeme başlatma (deprecated - 3dsecure kullanın)
 router.post('/initiate', authenticateToken, PaymentController.initiatePayment);
 

@@ -36,10 +36,13 @@ if (isProduction) {
         'https://www.xn--retimgo-m2a.com'
       ].filter(Boolean); // null/undefined değerleri filtrele
       
-      if (!origin || allowedOrigins.includes(origin)) {
+      // İyzico callback'leri için özel kontrol
+      const isIyzicoCallback = req?.path === '/api/payment/3dsecure/callback';
+      
+      if (!origin || allowedOrigins.includes(origin) || isIyzicoCallback) {
         callback(null, true);
       } else {
-        console.log('❌ CORS blocked origin:', origin);
+        console.log('❌ CORS blocked origin:', origin, 'for path:', req?.path);
         callback(new Error('Not allowed by CORS'));
       }
     },
@@ -68,6 +71,32 @@ app.use('/api/auth', authRoutes);
 // Public user routes (authentication gerekmez)
 app.get('/api/user/check-invite', checkInvite);
 app.post('/api/user/accept-invite', acceptInvite);
+
+// İyzico 3D Secure callback - CORS muafiyeti (dışarıdan gelir)
+app.options('/api/payment/3dsecure/callback', (req, res) => {
+  // OPTIONS preflight request için headers
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.status(200).end();
+});
+
+app.post('/api/payment/3dsecure/callback', (req, res, next) => {
+  // Callback için özel CORS headers
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  
+  console.log('=== İyzico Callback Debug ===');
+  console.log('Origin:', req.headers.origin);
+  console.log('User-Agent:', req.headers['user-agent']);
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('Body keys:', Object.keys(req.body));
+  
+  // PaymentController.handle3DSCallback'i direkt çağır
+  const PaymentController = require('./payment/paymentController');
+  PaymentController.handle3DSCallback(req, res);
+});
 
 // Payment routes - authentication logic payment/routes.js'de
 app.use('/api/payment', paymentRoutes);
