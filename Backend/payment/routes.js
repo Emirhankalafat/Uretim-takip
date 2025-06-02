@@ -14,20 +14,31 @@ router.post('/3dsecure', (req, res, next) => {
     origin: req.headers.origin,
     referer: req.headers.referer
   });
+  console.log('Cookies:', {
+    accessToken: req.cookies.accessToken ? `Token exists (${req.cookies.accessToken.substring(0, 20)}...)` : 'NONE'
+  });
   console.log('Body keys:', Object.keys(req.body));
   console.log('Body authorization:', req.body.authorization ? `Bearer ${req.body.authorization.substring(7, 20)}...` : 'NONE');
   
-  // Token'ı header'dan veya form data'dan oku
+  // Token'ı önce cookie'den, sonra header'dan, son olarak form data'dan oku
   let token = null;
   
-  // Önce header'dan dene
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.substring(7);
-    console.log('Token found in header');
+  // Önce cookie'den dene (normal authentication)
+  if (req.cookies.accessToken) {
+    token = req.cookies.accessToken;
+    console.log('Token found in cookies');
   }
   
-  // Header'da yoksa form data'dan dene
+  // Cookie'de yoksa header'dan dene
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+      console.log('Token found in header');
+    }
+  }
+  
+  // Header'da da yoksa form data'dan dene
   if (!token && req.body.authorization) {
     const formAuth = req.body.authorization;
     if (formAuth.startsWith('Bearer ')) {
@@ -39,13 +50,15 @@ router.post('/3dsecure', (req, res, next) => {
   if (!token) {
     console.log('❌ No token found in request');
     console.log('Available headers:', Object.keys(req.headers));
+    console.log('Available cookies:', Object.keys(req.cookies));
     console.log('Available body fields:', Object.keys(req.body));
-    return res.status(401).send('<html><body><h1>Unauthorized - Token required</h1><p>Debug: No token found in headers or form data</p></body></html>');
+    return res.status(401).send('<html><body><h1>Unauthorized - Token required</h1><p>Debug: No token found in cookies, headers or form data</p></body></html>');
   }
   
   console.log('✅ Token found, length:', token.length);
   
-  // Token'ı header'a koy ki authenticateToken middleware'i çalışsın
+  // Token'ı cookie'ye ve header'a koy ki authenticateToken middleware'i çalışsın
+  req.cookies.accessToken = token;
   req.headers.authorization = `Bearer ${token}`;
   
   // Authentication middleware'ini çağır
