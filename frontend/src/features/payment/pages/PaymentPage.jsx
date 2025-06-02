@@ -113,12 +113,26 @@ const PaymentPage = () => {
 
       // JWT token'ı Authorization header yerine form data olarak gönder
       const accessToken = localStorage.getItem('accessToken')
+      console.log('🔍 Payment Debug - Token check:', {
+        hasToken: !!accessToken,
+        tokenLength: accessToken?.length,
+        tokenStart: accessToken ? accessToken.substring(0, 20) + '...' : 'NONE',
+        userAgent: navigator.userAgent,
+        origin: window.location.origin
+      })
+      
       if (accessToken) {
         const tokenInput = document.createElement('input')
         tokenInput.type = 'hidden'
         tokenInput.name = 'authorization'
         tokenInput.value = `Bearer ${accessToken}`
         form.appendChild(tokenInput)
+        console.log('✅ Token added to form data')
+      } else {
+        console.error('❌ No access token found in localStorage!')
+        toast.error('Oturum bilgisi bulunamadı. Lütfen tekrar giriş yapın.')
+        setLoading(false)
+        return
       }
 
       // Formu sayfaya ekle ve submit et

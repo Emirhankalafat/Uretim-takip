@@ -26,10 +26,27 @@ const isProduction = process.env.NODE_ENV === 'production';
 if (isProduction) {
   // Production modda sadece aynı origin'den gelen istekleri kabul et
   app.use(cors({
-    origin: process.env.FRONTEND_URL || false, // Sadece belirtilen URL'den
+    origin: function (origin, callback) {
+      // Origin yoksa (same-origin requests) veya belirtilen URL'ler ise izin ver
+      const allowedOrigins = [
+        process.env.FRONTEND_URL,
+        'https://üretimgo.com',
+        'https://www.üretimgo.com',
+        'https://xn--retimgo-m2a.com',  // Unicode domain encoding
+        'https://www.xn--retimgo-m2a.com'
+      ].filter(Boolean); // null/undefined değerleri filtrele
+      
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log('❌ CORS blocked origin:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'CSRF-Token']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'CSRF-Token'],
+    optionsSuccessStatus: 200 // IE11 için
   }));
 } else {
   // Development modda localhost'tan gelen istekleri kabul et
@@ -52,46 +69,7 @@ app.use('/api/auth', authRoutes);
 app.get('/api/user/check-invite', checkInvite);
 app.post('/api/user/accept-invite', acceptInvite);
 
-// Payment routes - özel authentication yapılandırması
-// 3dsecure route authentication gerektirir
-app.post('/api/payment/3dsecure', (req, res, next) => {
-  // Token'ı header'dan veya form data'dan oku
-  let token = null;
-  
-  // Önce header'dan dene
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.substring(7);
-  }
-  
-  // Header'da yoksa form data'dan dene
-  if (!token && req.body.authorization) {
-    const formAuth = req.body.authorization;
-    if (formAuth.startsWith('Bearer ')) {
-      token = formAuth.substring(7);
-    }
-  }
-  
-  if (!token) {
-    return res.status(401).send('<html><body><h1>Unauthorized - Token required</h1></body></html>');
-  }
-  
-  // Token'ı header'a koy ki authenticateToken middleware'i çalışsın
-  req.headers.authorization = `Bearer ${token}`;
-  
-  // Authentication middleware'ini çağır
-  authenticateToken(req, res, (err) => {
-    if (err) {
-      return res.status(401).send('<html><body><h1>Unauthorized - Invalid token</h1></body></html>');
-    }
-    
-    // PaymentController.start3DSecurePayment'ı direkt çağır
-    const PaymentController = require('./payment/paymentController');
-    PaymentController.start3DSecurePayment(req, res);
-  });
-});
-
-// Diğer payment routes - authentication gerekmez (callback için)
+// Payment routes - authentication logic payment/routes.js'de
 app.use('/api/payment', paymentRoutes);
 
 // Diğer tüm route'lar için auth + CSRF koruması
