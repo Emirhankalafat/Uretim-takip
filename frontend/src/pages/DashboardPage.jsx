@@ -234,7 +234,7 @@ const DashboardPage = () => {
         </div>
 
         {/* Subscription Widget */}
-        <SubscriptionWidget />
+        {user?.is_SuperAdmin && <SubscriptionWidget />}
 
         {/* Kullanıcı Bilgileri */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -312,30 +312,20 @@ const DashboardPage = () => {
                     </div>
                   </div>
                 </button>
-
-                <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <span className="text-2xl mr-3">📊</span>
-                  <div className="text-left">
-                    <div className="text-sm font-medium text-gray-900">
-                      Raporlarım
+                {/* Sadece rapor yetkisi olanlar için Raporlarım butonu */}
+                {user?.permissions?.some(p => p.Name === 'REPORT_READ') || user?.is_SuperAdmin ? (
+                  <button onClick={() => navigate('/reports')} className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                    <span className="text-2xl mr-3">📊</span>
+                    <div className="text-left">
+                      <div className="text-sm font-medium text-gray-900">
+                        Raporlarım
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Oluşturduğunuz raporları görüntüleyin
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-500">
-                      Oluşturduğum raporları görüntüle
-                    </div>
-                  </div>
-                </button>
-
-                <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <span className="text-2xl mr-3">⚙️</span>
-                  <div className="text-left">
-                    <div className="text-sm font-medium text-gray-900">
-                      Profil Ayarları
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Kişisel bilgilerimi düzenle
-                    </div>
-                  </div>
-                </button>
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
@@ -356,6 +346,31 @@ const DashboardPage = () => {
             </div>
           </div>
         </div>
+        {/* Duyurular Alanı (placeholder) */}
+        <div className="bg-white shadow rounded-lg mt-8">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">
+              Duyurular
+            </h3>
+          </div>
+          <div className="px-6 py-4 text-gray-500 text-center">
+            <span className="text-4xl mb-4 block">📢</span>
+            <p>Henüz duyuru bulunmuyor.</p>
+            <p className="text-sm mt-2">Burada sistem duyuruları görünecek.</p>
+          </div>
+        </div>
+
+        {/* SuperAdmin için Şirket İsmini Düzenle butonu */}
+        {user?.is_SuperAdmin && (
+          <div className="mt-8 flex justify-end">
+            <button
+              onClick={() => navigate('/company-edit')}
+              className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-all shadow"
+            >
+              Şirket İsmini Düzenle
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -456,7 +471,11 @@ const DashboardPage = () => {
                       Abonelik Durumu
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {subscriptionStatus?.type === 'premium' ? `${subscriptionStatus.remainingDays} gün` : 'Trial'}
+                      {subscriptionStatus?.type === 'premium'
+                        ? `${subscriptionStatus.remainingDays} gün`
+                        : subscriptionStatus?.type === 'basic'
+                          ? 'Basic'
+                          : 'Trial'}
                     </dd>
                   </dl>
                 </div>
@@ -465,130 +484,40 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Sistem Yönetimi */}
-          <div className="bg-white shadow rounded-lg">
+        {/* Duyurular Alanı (SuperAdmin için) */}
+        {user?.is_SuperAdmin && (
+          <div className="bg-white shadow rounded-lg mb-8">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">
-                Sistem Yönetimi
-              </h3>
+              <h3 className="text-lg font-medium text-gray-900">Duyurular</h3>
             </div>
-            <div className="px-6 py-4">
-              <div className="grid grid-cols-1 gap-4">
-                <button 
-                  onClick={() => navigate('/user-management')}
-                  className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <span className="text-2xl mr-3">👥</span>
-                  <div className="text-left">
-                    <div className="text-sm font-medium text-gray-900">
-                      Kullanıcı Yönetimi
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Kullanıcıları ve yetkilerini yönet
-                    </div>
-                  </div>
-                </button>
-
-                <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <span className="text-2xl mr-3">📊</span>
-                  <div className="text-left">
-                    <div className="text-sm font-medium text-gray-900">
-                      Sistem Raporları
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Detaylı sistem raporlarını görüntüle
-                    </div>
-                  </div>
-                </button>
-
-                <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <span className="text-2xl mr-3">⚙️</span>
-                  <div className="text-left">
-                    <div className="text-sm font-medium text-gray-900">
-                      Sistem Ayarları
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Genel sistem konfigürasyonu
-                    </div>
-                  </div>
-                </button>
-
-                <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <span className="text-2xl mr-3">🔒</span>
-                  <div className="text-left">
-                    <div className="text-sm font-medium text-gray-900">
-                      Güvenlik Ayarları
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Güvenlik ve erişim kontrolü
-                    </div>
-                  </div>
-                </button>
-              </div>
+            <div className="px-6 py-4 text-gray-500 text-center">
+              <span className="text-4xl mb-4 block">📢</span>
+              <p>Henüz duyuru bulunmuyor.</p>
+              <p className="text-sm mt-2">Burada sistem duyuruları görünecek.</p>
             </div>
           </div>
-
-          {/* Sistem Durumu */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">
-                Sistem Durumu
-              </h3>
-            </div>
-            <div className="px-6 py-4">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                  <div className="flex items-center">
-                    <span className="text-xl mr-3">🟢</span>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Sistem Durumu</div>
-                      <div className="text-sm text-gray-500">Tüm servisler çalışıyor</div>
-                    </div>
-                  </div>
-                  <span className="text-sm font-medium text-green-600">Çevrimiçi</span>
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                  <div className="flex items-center">
-                    <span className="text-xl mr-3">📡</span>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">API Durumu</div>
-                      <div className="text-sm text-gray-500">Tüm endpoint'ler aktif</div>
-                    </div>
-                  </div>
-                  <span className="text-sm font-medium text-green-600">Aktif</span>
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                  <div className="flex items-center">
-                    <span className="text-xl mr-3">💾</span>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Veritabanı</div>
-                      <div className="text-sm text-gray-500">Bağlantı sağlıklı</div>
-                    </div>
-                  </div>
-                  <span className="text-sm font-medium text-green-600">Bağlı</span>
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                  <div className="flex items-center">
-                    <span className="text-xl mr-3">💳</span>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Abonelik Durumu</div>
-                      <div className="text-sm text-gray-500">
-                        {subscriptionStatus?.type === 'premium' ? 'Premium aktif' : 'Trial sürümü'}
-                      </div>
-                    </div>
-                  </div>
-                  <span className="text-sm font-medium text-blue-600">
-                    {subscriptionStatus?.remainingDays || trialInfo.remainingDays} gün kaldı
-                  </span>
-                </div>
-              </div>
-            </div>
+        )}
+        {/* Küçük Yönlendirme Kutucukları */}
+        {user?.is_SuperAdmin && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <button onClick={() => navigate('/company-edit')} className="flex flex-col items-center justify-center bg-primary-50 border border-primary-200 rounded-lg p-4 hover:bg-primary-100 transition">
+              <span className="text-2xl mb-2">🏢</span>
+              <span className="font-medium text-primary-800">Şirketi Düzenle</span>
+            </button>
+            <button onClick={() => navigate('/reports')} className="flex flex-col items-center justify-center bg-pink-50 border border-pink-200 rounded-lg p-4 hover:bg-pink-100 transition">
+              <span className="text-2xl mb-2">📊</span>
+              <span className="font-medium text-pink-800">Raporlar</span>
+            </button>
+            <button onClick={() => navigate('/user-management')} className="flex flex-col items-center justify-center bg-blue-50 border border-blue-200 rounded-lg p-4 hover:bg-blue-100 transition">
+              <span className="text-2xl mb-2">👥</span>
+              <span className="font-medium text-blue-800">Kullanıcı Yönetimi</span>
+            </button>
+            <button onClick={() => navigate('/my-permissions')} className="flex flex-col items-center justify-center bg-green-50 border border-green-200 rounded-lg p-4 hover:bg-green-100 transition">
+              <span className="text-2xl mb-2">🔐</span>
+              <span className="font-medium text-green-800">Yetkilerim</span>
+            </button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )

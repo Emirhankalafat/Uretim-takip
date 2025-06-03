@@ -29,6 +29,12 @@ const paymentService = {
   getPaymentHistory: async (userId) => {
     const response = await api.get(`/payment/history/${userId}`)
     return response.data
+  },
+
+  // Admin: Tüm ödemeleri getir (filtreli)
+  getAllPayments: async (params = {}) => {
+    const response = await api.get('/payment/admin/all-payments', { params });
+    return response.data;
   }
 }
 

@@ -400,11 +400,41 @@ const getSimpleCompanyUsers = async (req, res) => {
   }
 };
 
+const getUserById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id: BigInt(userId) },
+      include: { company: true }
+    });
+    if (!user) {
+      return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+    }
+    // BigInt alanlarını dönüştür
+    const serializedUser = {
+      ...user,
+      id: Number(user.id),
+      company_id: user.company_id ? Number(user.company_id) : undefined
+    };
+    const serializedCompany = user.company
+      ? {
+          ...user.company,
+          id: Number(user.company.id)
+        }
+      : null;
+    res.status(200).json({ data: { user: serializedUser, company: serializedCompany } });
+  } catch (error) {
+    console.error('getUserById hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
 module.exports = {
   inviteUser,
   acceptInvite,
   getInvites,
   checkInvite,
   getCompanyUsers,
-  getSimpleCompanyUsers
+  getSimpleCompanyUsers,
+  getUserById
 }; 

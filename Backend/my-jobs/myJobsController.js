@@ -101,18 +101,18 @@ const getMyJobs = async (req, res) => {
           assigned_user: step.assigned_user.toString(),
           isMyTurn,
           previousStepsCompleted: allPreviousCompleted,
-          order: {
+          order: step.order ? {
             ...step.order,
-            id: step.order.id.toString(),
-            customer: {
+            id: step.order.id?.toString(),
+            customer: step.order.customer ? {
               ...step.order.customer,
-              id: step.order.customer.id.toString()
-            }
-          },
-          product: {
+              id: step.order.customer.id?.toString()
+            } : { Name: 'Stok' }
+          } : null,
+          product: step.product ? {
             ...step.product,
-            id: step.product.id.toString()
-          }
+            id: step.product.id?.toString()
+          } : null
         };
       })
     );
@@ -126,18 +126,18 @@ const getMyJobs = async (req, res) => {
       assigned_user: step.assigned_user.toString(),
       isMyTurn: true, // Tamamlanan işler için her zaman true
       previousStepsCompleted: true,
-      order: {
+      order: step.order ? {
         ...step.order,
-        id: step.order.id.toString(),
-        customer: {
+        id: step.order.id?.toString(),
+        customer: step.order.customer ? {
           ...step.order.customer,
-          id: step.order.customer.id.toString()
-        }
-      },
-      product: {
+          id: step.order.customer.id?.toString()
+        } : { Name: 'Stok' }
+      } : null,
+      product: step.product ? {
         ...step.product,
-        id: step.product.id.toString()
-      }
+        id: step.product.id?.toString()
+      } : null
     }));
 
     // Sırası gelenler ve gelecek işler olarak ayır
@@ -225,37 +225,37 @@ const getMyJobDetail = async (req, res) => {
 
     const formattedJob = {
       ...jobDetail,
-      id: jobDetail.id.toString(),
-      Order_id: jobDetail.Order_id.toString(),
-      Product_id: jobDetail.Product_id.toString(),
-      assigned_user: jobDetail.assigned_user.toString(),
+      id: jobDetail.id?.toString(),
+      Order_id: jobDetail.Order_id?.toString(),
+      Product_id: jobDetail.Product_id?.toString(),
+      assigned_user: jobDetail.assigned_user?.toString(),
       isMyTurn: allPreviousCompleted,
-      order: {
+      order: jobDetail.order ? {
         ...jobDetail.order,
-        id: jobDetail.order.id.toString(),
-        Customer_id: jobDetail.order.Customer_id.toString(),
-        Company_id: jobDetail.order.Company_id.toString(),
-        customer: {
+        id: jobDetail.order.id?.toString(),
+        Customer_id: jobDetail.order.Customer_id?.toString(),
+        Company_id: jobDetail.order.Company_id?.toString(),
+        customer: jobDetail.order.customer ? {
           ...jobDetail.order.customer,
-          id: jobDetail.order.customer.id.toString(),
-          Company_Id: jobDetail.order.customer.Company_Id.toString()
-        }
-      },
-      product: {
+          id: jobDetail.order.customer.id?.toString(),
+          Company_Id: jobDetail.order.customer.Company_Id?.toString()
+        } : { Name: 'Stok' }
+      } : null,
+      product: jobDetail.product ? {
         ...jobDetail.product,
-        id: jobDetail.product.id.toString(),
-        Category_id: jobDetail.product.Category_id.toString(),
-        Company_id: jobDetail.product.Company_id.toString()
-      },
+        id: jobDetail.product.id?.toString(),
+        Category_id: jobDetail.product.Category_id?.toString(),
+        Company_id: jobDetail.product.Company_id?.toString()
+      } : null,
       previousSteps: previousSteps.map(step => ({
         ...step,
-        id: step.id.toString(),
-        Order_id: step.Order_id.toString(),
-        Product_id: step.Product_id.toString(),
+        id: step.id?.toString(),
+        Order_id: step.Order_id?.toString(),
+        Product_id: step.Product_id?.toString(),
         assigned_user: step.assigned_user?.toString(),
         assignedUser: step.assignedUser ? {
           ...step.assignedUser,
-          id: step.assignedUser.id.toString()
+          id: step.assignedUser.id?.toString()
         } : null
       }))
     };

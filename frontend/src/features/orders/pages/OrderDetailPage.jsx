@@ -541,6 +541,12 @@ const OrderDetailPage = () => {
                                       </p>
                                     </div>
                                   )}
+                                  {step.notes && (
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-1">Notlar</label>
+                                      <p className="text-sm text-gray-700 bg-yellow-50 rounded p-2">{step.notes}</p>
+                                    </div>
+                                  )}
                                   <div className="grid grid-cols-2 gap-4 text-xs">
                                     <div>
                                       <label className="block font-medium text-gray-600">Başlangıç</label>

@@ -375,10 +375,32 @@ const getCompanyUsers = async (req, res) => {
   }
 };
 
+// SuperAdmin için şirket ismini güncelleme
+const updateCompanyName = async (req, res) => {
+  try {
+    if (!req.user.is_SuperAdmin) {
+      return res.status(403).json({ message: 'Sadece SuperAdmin şirket ismini düzenleyebilir.' });
+    }
+    const { companyId, newName } = req.body;
+    if (!companyId || !newName) {
+      return res.status(400).json({ message: 'companyId ve newName zorunlu.' });
+    }
+    const updated = await prisma.company.update({
+      where: { id: BigInt(companyId) },
+      data: { Name: newName }
+    });
+    res.status(200).json({ message: 'Şirket ismi güncellendi.', data: updated });
+  } catch (error) {
+    console.error('Şirket ismi güncelleme hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
 module.exports = {
   addPermissionToUser,
   removePermissionFromUser,
   getUserPermissions,
   getAllPermissions,
-  getCompanyUsers
+  getCompanyUsers,
+  updateCompanyName,
 }; 

@@ -265,11 +265,11 @@ const MyJobsPage = () => {
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center text-sm text-gray-600">
                       <span className="w-4 h-4 mr-2">👤</span>
-                      <span>{job.order.customer.Name}</span>
+                      <span>{job.order?.customer?.Name || "Bilinmiyor"}</span>
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <span className="w-4 h-4 mr-2">📦</span>
-                      <span>{job.product.name}</span>
+                      <span>{job.product?.name || "Bilinmiyor"}</span>
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <span className="w-4 h-4 mr-2">🔢</span>
@@ -314,15 +314,15 @@ const MyJobsPage = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Sipariş</label>
-                  <p className="text-gray-900">#{selectedJob.order.order_number}</p>
+                  <p className="text-gray-900">{selectedJob.order?.order_number || "-"}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Müşteri</label>
-                  <p className="text-gray-900">{selectedJob.order.customer.Name}</p>
+                  <p className="text-gray-900">{selectedJob.order?.customer?.Name || "Bilinmiyor"}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ürün</label>
-                  <p className="text-gray-900">{selectedJob.product.name}</p>
+                  <p className="text-gray-900">{selectedJob.product?.name || "Bilinmiyor"}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Adım Sırası</label>

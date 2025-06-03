@@ -24,6 +24,7 @@ const checkExpiredSubscriptions = require('./utils/subscriptionControl');
 const rateLimit = require('express-rate-limit');
 const { RedisStore } = require('rate-limit-redis');
 const { redisClient } = require('./config/redis');
+const reportRoutes = require('./reports/reportRoutes');
 require('dotenv').config();
 
 // Production modunu kontrol et
@@ -219,6 +220,8 @@ cron.schedule('0 * * * *', async () => {
 }, {
   timezone: 'UTC'
 });
+
+app.use('/api/reports', reportRoutes);
 
 const PORT = process.env.PORT || 3001;
 

@@ -30,6 +30,7 @@ const AdminLayout = ({ children }) => {
     { name: 'Kullanıcı Yönetimi', href: '/admin/users', icon: UsersIcon },
     { name: 'Şirket Yönetimi', href: '/admin/companies', icon: BuildingOfficeIcon },
     { name: 'Sistem Logları', href: '/admin/logs', icon: DocumentTextIcon },
+    { name: 'Ödemeler', href: '/admin/payments', icon: DocumentTextIcon },
   ];
 
   const handleLogout = () => {

@@ -1,5 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const logger = require('../utils/logger');
+const { logToDb } = require('../utils/logger');
 
 // Tüm kullanıcıları listele (aktif/pasif durumu, rol bilgisi vs ile birlikte)
 const getAllUsers = async (req, res) => {
@@ -55,7 +57,16 @@ const getAllUsers = async (req, res) => {
       users: formattedUsers
     });
   } catch (error) {
-    console.error('Kullanıcı listeleme hatası:', error);
+    logger.error('Kullanıcı listeleme hatası:', error);
+    await logToDb({
+      type: 'error',
+      message: 'Kullanıcı listeleme hatası',
+      details: error.message,
+      stack: error.stack,
+      endpoint: '/admin/users',
+      ip: req.ip,
+      user_id: req.systemAdmin?.id || null
+    });
     res.status(500).json({ message: 'Sunucu hatası.' });
   }
 };
@@ -93,7 +104,16 @@ const toggleUserActive = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Kullanıcı aktiflik değiştirme hatası:', error);
+    logger.error('Kullanıcı aktiflik değiştirme hatası:', error);
+    await logToDb({
+      type: 'error',
+      message: 'Kullanıcı aktiflik değiştirme hatası',
+      details: error.message,
+      stack: error.stack,
+      endpoint: `/admin/users/${req.params.userId}/toggle-active`,
+      ip: req.ip,
+      user_id: req.systemAdmin?.id || null
+    });
     res.status(500).json({ message: 'Sunucu hatası.' });
   }
 };
@@ -138,61 +158,70 @@ const getAllCompanies = async (req, res) => {
       companies: formattedCompanies
     });
   } catch (error) {
-    console.error('Şirket listeleme hatası:', error);
+    logger.error('Şirket listeleme hatası:', error);
+    await logToDb({
+      type: 'error',
+      message: 'Şirket listeleme hatası',
+      details: error.message,
+      stack: error.stack,
+      endpoint: '/admin/companies',
+      ip: req.ip,
+      user_id: req.systemAdmin?.id || null
+    });
     res.status(500).json({ message: 'Sunucu hatası.' });
   }
 };
 
-// Sistem loglarını listele
+// Sistem loglarını listele (yeni SystemLog tablosu)
 const getSystemLogs = async (req, res) => {
   try {
-    const { startDate, endDate, type } = req.query;
-    
+    const { startDate, endDate, type, user_id, endpoint, search } = req.query;
     let whereClause = {};
-    
-    // Tarih filtresi
+    if (type) whereClause.type = type;
+    if (user_id) whereClause.user_id = BigInt(user_id);
+    if (endpoint) whereClause.endpoint = { contains: endpoint, mode: 'insensitive' };
     if (startDate || endDate) {
       whereClause.created_at = {};
       if (startDate) whereClause.created_at.gte = new Date(startDate);
       if (endDate) whereClause.created_at.lte = new Date(endDate);
     }
-
-    // Log tipi filtresi
-    if (type) {
-      whereClause.type = type;
+    if (search) {
+      whereClause.OR = [
+        { message: { contains: search, mode: 'insensitive' } },
+        { details: { contains: search, mode: 'insensitive' } }
+      ];
     }
-
-    const logs = await prisma.paymentLog.findMany({
+    const logs = await prisma.systemLog.findMany({
       where: whereClause,
       include: {
         user: {
-          select: {
-            id: true,
-            Name: true,
-            Mail: true
-          }
+          select: { id: true, Name: true, Mail: true }
         }
       },
-      orderBy: { created_at: 'desc' }
+      orderBy: { created_at: 'desc' },
+      take: 200 // max 200 log
     });
-
-    // BigInt'leri stringe çevir
     const formattedLogs = logs.map(log => ({
       ...log,
       id: log.id.toString(),
       user_id: log.user_id ? log.user_id.toString() : null,
-      user: log.user ? {
-        ...log.user,
-        id: log.user.id.toString()
-      } : null
+      user: log.user ? { ...log.user, id: log.user.id.toString() } : null
     }));
-
     res.status(200).json({
       message: 'Sistem logları başarıyla listelendi.',
       logs: formattedLogs
     });
   } catch (error) {
-    console.error('Log listeleme hatası:', error);
+    logger.error('Log listeleme hatası:', error);
+    await logToDb({
+      type: 'error',
+      message: 'Log listeleme hatası',
+      details: error.message,
+      stack: error.stack,
+      endpoint: '/admin/logs',
+      ip: req.ip,
+      user_id: req.systemAdmin?.id || null
+    });
     res.status(500).json({ message: 'Sunucu hatası.' });
   }
 };
@@ -275,7 +304,16 @@ const getCompanyDetails = async (req, res) => {
       company: formattedCompany
     });
   } catch (error) {
-    console.error('Şirket detayı getirme hatası:', error);
+    logger.error('Şirket detayı getirme hatası:', error);
+    await logToDb({
+      type: 'error',
+      message: 'Şirket detayı getirme hatası',
+      details: error.message,
+      stack: error.stack,
+      endpoint: `/admin/companies/${req.params.companyId}`,
+      ip: req.ip,
+      user_id: req.systemAdmin?.id || null
+    });
     res.status(500).json({ message: 'Sunucu hatası.' });
   }
 };
@@ -315,7 +353,16 @@ const updateCompanySubscription = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Şirket aboneliği güncelleme hatası:', error);
+    logger.error('Şirket aboneliği güncelleme hatası:', error);
+    await logToDb({
+      type: 'error',
+      message: 'Şirket aboneliği güncelleme hatası',
+      details: error.message,
+      stack: error.stack,
+      endpoint: `/admin/companies/${req.params.companyId}/subscription`,
+      ip: req.ip,
+      user_id: req.systemAdmin?.id || null
+    });
     res.status(500).json({ message: 'Sunucu hatası.' });
   }
 };
@@ -386,7 +433,16 @@ const getSystemStats = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Sistem istatistikleri getirme hatası:', error);
+    logger.error('Sistem istatistikleri getirme hatası:', error);
+    await logToDb({
+      type: 'error',
+      message: 'Sistem istatistikleri getirme hatası',
+      details: error.message,
+      stack: error.stack,
+      endpoint: '/admin/stats',
+      ip: req.ip,
+      user_id: req.systemAdmin?.id || null
+    });
     res.status(500).json({ message: 'Sunucu hatası.' });
   }
 };

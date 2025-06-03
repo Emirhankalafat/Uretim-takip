@@ -170,7 +170,7 @@ const OrdersPage = () => {
   const handleCreateOrder = async (e) => {
     e.preventDefault()
     
-    if (!createFormData.customer_id) {
+    if (!createFormData.is_stock && !createFormData.customer_id) {
       setToast({
         type: 'error',
         message: 'Lütfen bir müşteri seçin.'
@@ -188,7 +188,7 @@ const OrdersPage = () => {
 
     // Backend'in beklediği formata dönüştür
     const orderData = {
-      Customer_id: createFormData.customer_id,
+      Customer_id: createFormData.is_stock ? undefined : createFormData.customer_id,
       deadline: createFormData.deadline,
       notes: createFormData.notes,
       priority: createFormData.priority,
@@ -630,7 +630,8 @@ const OrdersPage = () => {
                     value={createFormData.customer_id}
                     onChange={(e) => setCreateFormData(prev => ({ ...prev, customer_id: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    required
+                    required={!createFormData.is_stock}
+                    disabled={createFormData.is_stock}
                   >
                     <option value="">Müşteri seçin...</option>
                     {customers.map(customer => (
@@ -685,6 +686,7 @@ const OrdersPage = () => {
                 <input
                   type="date"
                   value={createFormData.deadline}
+                  min={new Date().toISOString().split('T')[0]}
                   onChange={(e) => setCreateFormData(prev => ({ ...prev, deadline: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />

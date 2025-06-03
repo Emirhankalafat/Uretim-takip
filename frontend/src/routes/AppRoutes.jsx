@@ -41,6 +41,13 @@ import AdminLayout from '../layouts/AdminLayout'
 const AdminUsersPage = lazy(() => import('../features/admin/pages/AdminUsersPage'))
 const AdminCompaniesPage = lazy(() => import('../features/admin/pages/AdminCompaniesPage'))
 const AdminLogsPage = lazy(() => import('../features/admin/pages/AdminLogsPage'))
+const AdminPaymentsPage = lazy(() => import('../features/admin/pages/AdminPaymentsPage'))
+
+// Reports Page
+const ReportsPage = lazy(() => import('../features/reports/pages/ReportsPage'))
+
+// Company Edit Page
+const CompanyEditPage = lazy(() => import('../features/company/pages/CompanyEditPage'))
 
 // Loading Component
 const LoadingScreen = ({ message = "Sayfa yükleniyor..." }) => {
@@ -411,6 +418,35 @@ const AppRoutes = () => {
             <AdminLogsPage />
           </AdminProtectedRoute>
         }
+      />
+      {/* Admin Payments Route */}
+      <Route
+        path="/admin/payments"
+        element={
+          <AdminProtectedRoute>
+            <AdminPaymentsPage />
+          </AdminProtectedRoute>
+        }
+      />
+      
+      {/* Reports Route */}
+      <Route 
+        path="/reports" 
+        element={
+          <ProtectedRoute>
+            <ReportsPage />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Company Edit Route (SuperAdmin only) */}
+      <Route 
+        path="/company-edit" 
+        element={
+          <ProtectedRoute>
+            <CompanyEditPage />
+          </ProtectedRoute>
+        } 
       />
       
       {/* 404 Route */}

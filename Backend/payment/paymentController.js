@@ -623,6 +623,75 @@ class PaymentController {
       res.status(500).json({ error: 'Kart kaydedilirken hata oluştu' });
     }
   }
+
+  /**
+   * Admin için tüm ödemeleri getirir (filtreli ve şirket adı ile)
+   */
+  static async getAllPayments(req, res) {
+    try {
+      const { status, user_id, company_id, startDate, endDate, minPrice, maxPrice, search } = req.query;
+      let whereClause = {};
+      if (status) whereClause.status = status;
+      if (user_id) whereClause.user_id = BigInt(user_id);
+      if (startDate || endDate) {
+        whereClause.created_at = {};
+        if (startDate) whereClause.created_at.gte = new Date(startDate);
+        if (endDate) whereClause.created_at.lte = new Date(endDate);
+      }
+      if (minPrice) {
+        whereClause.price = { ...(whereClause.price || {}), gte: parseFloat(minPrice) };
+      }
+      if (maxPrice) {
+        whereClause.price = { ...(whereClause.price || {}), lte: parseFloat(maxPrice) };
+      }
+      if (search) {
+        whereClause.OR = [
+          { payment_id: { contains: search, mode: 'insensitive' } },
+          { basket_id: { contains: search, mode: 'insensitive' } },
+          { error_message: { contains: search, mode: 'insensitive' } }
+        ];
+      }
+      // company_id ile filtreleme için user üzerinden ilişki kur
+      let include = {
+        user: {
+          select: {
+            id: true,
+            Name: true,
+            Mail: true,
+            company: { select: { id: true, Name: true } }
+          }
+        }
+      };
+      if (company_id) {
+        whereClause.user = { company_id: BigInt(company_id) };
+      }
+      const payments = await prisma.paymentLog.findMany({
+        where: whereClause,
+        include,
+        orderBy: { created_at: 'desc' }
+      });
+      // BigInt değerleri string'e çevir ve company adı ekle
+      const serializedPayments = payments.map(payment => ({
+        ...payment,
+        id: payment.id.toString(),
+        user_id: payment.user_id.toString(),
+        user: payment.user ? {
+          ...payment.user,
+          id: payment.user.id.toString(),
+          company: payment.user.company ? {
+            ...payment.user.company,
+            id: payment.user.company.id.toString()
+          } : null
+        } : null,
+        company_name: payment.user?.company?.Name || '-',
+        company_id: payment.user?.company?.id?.toString() || null
+      }));
+      res.json({ success: true, payments: serializedPayments });
+    } catch (error) {
+      console.error('getAllPayments error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
 }
 
 module.exports = PaymentController; 

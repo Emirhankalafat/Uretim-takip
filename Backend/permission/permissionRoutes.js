@@ -11,7 +11,8 @@ const {
   removePermissionFromUser,
   getUserPermissions,
   getAllPermissions,
-  getCompanyUsers
+  getCompanyUsers,
+  updateCompanyName
 } = require('./permissionController');
 
 // Tüm permission'ları listeleme (kimlik doğrulama yeterli)
@@ -60,5 +61,8 @@ router.post('/remove-permission',
   requirePermission('USER_MANAGEMENT'), 
   removePermissionFromUser
 );
+
+// SuperAdmin için şirket ismi güncelleme
+router.post('/update-company-name', authenticateToken, updateCompanyName);
 
 module.exports = router; 

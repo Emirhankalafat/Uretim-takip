@@ -8,54 +8,51 @@ datasource db {
 }
 
 model Company {
-  id                   BigInt     @id @default(autoincrement())
-  Name                 String
-  Created_At           DateTime   @default(now())
-  Max_User             Int
+  id                    BigInt       @id @default(autoincrement())
+  Name                  String
+  Created_At            DateTime     @default(now())
+  Max_User              Int
   Suspscription_package String
-  Sub_end_time         DateTime
-
-  users                User[]
-  invites              Invite[]
-  categories           Categories[]
-  products             Products[]
-  customers            Customers[]
-  orders               Orders[]
+  Sub_end_time          DateTime
+  categories            Categories[]
+  customers             Customers[]
+  invites               Invite[]
+  orders                Orders[]
+  products              Products[]
+  users                 User[]
 
   @@map("companies")
 }
 
 model User {
-  id           BigInt     @id @default(autoincrement())
-  Name         String
-  Mail         String     @unique
-  password     String
-  is_confirm   Boolean    @default(false)
-  is_SuperAdmin Boolean   @default(false)
-  is_active    Boolean    @default(true)
-  created_at   DateTime   @default(now())
-
-  company_id   BigInt
-  company      Company    @relation(fields: [company_id], references: [id])
-
-  permissions  Users_Permissions[]
-  confirmTokens ConfirmToken[]
-  refreshTokens RefreshToken[]
+  id                  BigInt               @id @default(autoincrement())
+  Name                String
+  Mail                String               @unique
+  password            String
+  is_confirm          Boolean              @default(false)
+  is_SuperAdmin       Boolean              @default(false)
+  is_active           Boolean              @default(true)
+  company_id          BigInt
+  created_at          DateTime             @default(now())
+  systemLogs          SystemLog[]
+  confirmTokens       ConfirmToken[]
+  orderSteps          OrderSteps[]
   passwordResetTokens PasswordResetToken[]
-  responsibleSteps ProductSteps[]
-  orderSteps   OrderSteps[]
-  userCards    UserCard[]
-  paymentLogs  PaymentLog[]
+  paymentLogs         PaymentLog[]
+  responsibleSteps    ProductSteps[]
+  refreshTokens       RefreshToken[]
+  userCards           UserCard[]
+  company             Company              @relation(fields: [company_id], references: [id])
+  permissions         Users_Permissions[]
 
   @@map("users")
 }
 
 model Permissions {
-  id     BigInt     @id @default(autoincrement())
-  Name   String
-  Type   String
-
-  users  Users_Permissions[]
+  id    BigInt              @id @default(autoincrement())
+  Name  String              @unique(map: "unique_permission_name")
+  Type  String
+  users Users_Permissions[]
 
   @@map("permissions")
 }
@@ -64,9 +61,8 @@ model Users_Permissions {
   id            BigInt      @id @default(autoincrement())
   User_id       BigInt
   Permission_id BigInt
-
-  user          User        @relation(fields: [User_id], references: [id])
   permission    Permissions @relation(fields: [Permission_id], references: [id])
+  user          User        @relation(fields: [User_id], references: [id])
 
   @@map("users_permissions")
 }
@@ -77,20 +73,19 @@ model ConfirmToken {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
-
   user      User     @relation(fields: [user_id], references: [id])
 
   @@map("confirm_tokens")
 }
 
 model RefreshToken {
-  id          BigInt   @id @default(autoincrement())
-  user        User     @relation(fields: [userId], references: [id])
-  userId      BigInt
-  tokenHash   String
-  expiresAt   DateTime
-  revoked     Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id        BigInt   @id @default(autoincrement())
+  userId    BigInt
+  tokenHash String
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
 
   @@map("refresh_tokens")
 }
@@ -102,7 +97,6 @@ model PasswordResetToken {
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
-
   user      User     @relation(fields: [user_id], references: [id])
 
   @@map("password_reset_tokens")
@@ -116,109 +110,158 @@ model Invite {
   created_at   DateTime @default(now())
   invite_token String   @unique
   expires_at   DateTime
-
   company      Company  @relation(fields: [Company_id], references: [id])
 
   @@map("invites")
 }
 
 model Categories {
-  id          BigInt    @id @default(autoincrement())
+  id          BigInt     @id @default(autoincrement())
   Name        String
   Description String?
   Company_id  BigInt
-  
-  company     Company   @relation(fields: [Company_id], references: [id])
+  company     Company    @relation(fields: [Company_id], references: [id])
   products    Products[]
-  
+
   @@map("categories")
 }
 
 model Products {
-  id          BigInt     @id @default(autoincrement())
+  id          BigInt         @id @default(autoincrement())
   name        String
   description String?
   Category_id BigInt
   Company_id  BigInt
-  
-  category    Categories @relation(fields: [Category_id], references: [id])
-  company     Company    @relation(fields: [Company_id], references: [id])
-  steps       ProductSteps[]
   orderSteps  OrderSteps[]
-  
+  steps       ProductSteps[]
+  category    Categories     @relation(fields: [Category_id], references: [id])
+  company     Company        @relation(fields: [Company_id], references: [id])
+
   @@map("products")
 }
 
 model ProductSteps {
-  id              BigInt   @id @default(autoincrement())
-  Name            String
-  Description     String?
-  Product_id      BigInt
-  Step_number     Int
+  id               BigInt   @id @default(autoincrement())
+  Name             String
+  Description      String?
+  Product_id       BigInt
+  Step_number      Int
   Responsible_User BigInt?
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-  
-  product         Products @relation(fields: [Product_id], references: [id], onDelete: Cascade)
-  responsible     User?    @relation(fields: [Responsible_User], references: [id])
-  
-  @@map("product_steps")
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  product          Products @relation(fields: [Product_id], references: [id], onDelete: Cascade)
+  responsible      User?    @relation(fields: [Responsible_User], references: [id])
+
   @@unique([Product_id, Step_number])
+  @@map("product_steps")
 }
 
 model Customers {
-  id          BigInt    @id @default(autoincrement())
-  Name        String
-  Company_Id  BigInt
-  Created_At  DateTime  @default(now())
-  
-  company     Company   @relation(fields: [Company_Id], references: [id])
-  orders      Orders[]
-  
+  id         BigInt   @id @default(autoincrement())
+  Name       String
+  Company_Id BigInt
+  Created_At DateTime @default(now())
+  company    Company  @relation(fields: [Company_Id], references: [id])
+  orders     Orders[]
+
   @@map("customers")
 }
 
 model Orders {
-  id            BigInt      @id @default(autoincrement())
-  order_number  String      @unique
-  Customer_id   BigInt
-  Company_id    BigInt
-  status        OrderStatus @default(PENDING)
-  priority      Priority    @default(NORMAL)
-  deadline      DateTime?
-  notes         String?
-  is_stock      Boolean     @default(false)
-  created_at    DateTime    @default(now())
-  updated_at    DateTime    @updatedAt
-  
-  customer      Customers   @relation(fields: [Customer_id], references: [id])
-  company       Company     @relation(fields: [Company_id], references: [id])
-  orderSteps    OrderSteps[]
-  
+  id           BigInt       @id @default(autoincrement())
+  order_number String       @unique
+  Customer_id  BigInt?
+  Company_id   BigInt
+  status       OrderStatus  @default(PENDING)
+  priority     Priority     @default(NORMAL)
+  deadline     DateTime?
+  notes        String?
+  created_at   DateTime     @default(now())
+  updated_at   DateTime     @updatedAt
+  is_stock     Boolean      @default(false)
+  orderSteps   OrderSteps[]
+  company      Company      @relation(fields: [Company_id], references: [id])
+  customer     Customers?   @relation(fields: [Customer_id], references: [id])
+
   @@map("orders")
 }
 
 model OrderSteps {
-  id                BigInt      @id @default(autoincrement())
-  Order_id          BigInt
-  Product_id        BigInt
-  step_name         String
-  step_description  String?
-  step_number       Int
-  assigned_user     BigInt?
-  status            StepStatus  @default(WAITING)
-  started_at        DateTime?
-  completed_at      DateTime?
-  notes             String?
-  created_at        DateTime    @default(now())
-  updated_at        DateTime    @updatedAt
-  
-  order             Orders      @relation(fields: [Order_id], references: [id], onDelete: Cascade)
-  product           Products    @relation(fields: [Product_id], references: [id])
-  assignedUser      User?       @relation(fields: [assigned_user], references: [id])
-  
-  @@map("order_steps")
+  id               BigInt     @id @default(autoincrement())
+  Order_id         BigInt
+  Product_id       BigInt
+  step_name        String
+  step_description String?
+  step_number      Int
+  assigned_user    BigInt?
+  status           StepStatus @default(WAITING)
+  started_at       DateTime?
+  completed_at     DateTime?
+  notes            String?
+  created_at       DateTime   @default(now())
+  updated_at       DateTime   @updatedAt
+  order            Orders     @relation(fields: [Order_id], references: [id], onDelete: Cascade)
+  product          Products   @relation(fields: [Product_id], references: [id])
+  assignedUser     User?      @relation(fields: [assigned_user], references: [id])
+
   @@unique([Order_id, Product_id, step_number])
+  @@map("order_steps")
+}
+
+model UserCard {
+  id            BigInt   @id @default(autoincrement())
+  user_id       BigInt
+  card_user_key String
+  card_token    String
+  card_alias    String
+  bin_number    String
+  last_four     String
+  card_type     String
+  association   String?
+  card_family   String?
+  created_at    DateTime @default(now())
+  user          User     @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, card_token])
+  @@map("user_cards")
+}
+
+model PaymentLog {
+  id              BigInt   @id @default(autoincrement())
+  user_id         BigInt
+  conversation_id String
+  price           Float
+  currency        String   @default("TRY")
+  status          String
+  payment_id      String
+  basket_id       String
+  created_at      DateTime @default(now())
+  error_message   String?
+  user            User     @relation(fields: [user_id], references: [id])
+
+  @@map("payment_logs")
+}
+
+model SystemAdmin {
+  id           BigInt   @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SystemLog {
+  id         BigInt   @id @default(autoincrement())
+  type       String
+  message    String
+  details    String?
+  user_id    BigInt?
+  endpoint   String?
+  ip         String?
+  stack      String?
+  created_at DateTime @default(now())
+  user       User?    @relation(fields: [user_id], references: [id])
 }
 
 enum OrderStatus {
@@ -240,51 +283,4 @@ enum Priority {
   NORMAL
   HIGH
   URGENT
-}
-
-model UserCard {
-  id             BigInt   @id @default(autoincrement())
-  user           User     @relation(fields: [user_id], references: [id])
-  user_id        BigInt
-
-  card_user_key  String
-  card_token     String
-  card_alias     String
-  bin_number     String
-  last_four      String
-  card_type      String
-  association    String?
-  card_family    String?
-
-  created_at     DateTime @default(now())
-
-  @@unique([user_id, card_token])
-  @@map("user_cards")
-}
-
-model PaymentLog {
-  id              BigInt   @id @default(autoincrement())
-  user            User     @relation(fields: [user_id], references: [id])
-  user_id         BigInt
-
-  conversation_id String
-  price           Float
-  currency        String   @default("TRY")
-  status          String
-  payment_id      String
-  basket_id       String
-  error_message   String?
-
-  created_at      DateTime @default(now())
-
-  @@map("payment_logs")
-}
-
-model SystemAdmin {
-  id           BigInt   @id @default(autoincrement())
-  email        String   @unique
-  passwordHash String
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
 }

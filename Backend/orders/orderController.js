@@ -7,16 +7,20 @@ const createOrder = async (req, res) => {
     const { Customer_id, priority, deadline, notes, products, is_stock } = req.body;
     const company_id = req.user.company_id;
 
-    // Müşteri kontrolü
-    const customer = await prisma.customers.findFirst({
-      where: {
-        id: BigInt(Customer_id),
-        Company_Id: BigInt(company_id)
+    // Sadece stok siparişi değilse müşteri kontrolü yap
+    if (!is_stock) {
+      if (!Customer_id) {
+        return res.status(400).json({ message: 'Müşteri seçilmedi.' });
       }
-    });
-
-    if (!customer) {
-      return res.status(404).json({ message: 'Müşteri bulunamadı.' });
+      const customer = await prisma.customers.findFirst({
+        where: {
+          id: BigInt(Customer_id),
+          Company_Id: BigInt(company_id)
+        }
+      });
+      if (!customer) {
+        return res.status(404).json({ message: 'Müşteri bulunamadı.' });
+      }
     }
 
     // Otomatik sipariş numarası oluştur
@@ -49,7 +53,7 @@ const createOrder = async (req, res) => {
       const order = await tx.orders.create({
         data: {
           order_number: orderNumber,
-          Customer_id: BigInt(Customer_id),
+          Customer_id: is_stock ? null : BigInt(Customer_id),
           Company_id: BigInt(company_id),
           priority: priority || 'NORMAL',
           deadline: deadline ? new Date(deadline) : null,
@@ -125,7 +129,7 @@ const createOrder = async (req, res) => {
       order: {
         ...result,
         id: result.id.toString(),
-        Customer_id: result.Customer_id.toString(),
+        Customer_id: result.Customer_id ? result.Customer_id.toString() : null,
         Company_id: result.Company_id.toString()
       }
     });
@@ -297,11 +301,11 @@ const getOrders = async (req, res) => {
     const formattedOrders = orders.map(order => ({
       ...order,
       id: order.id.toString(),
-      Customer_id: order.Customer_id.toString(),
+      Customer_id: order.Customer_id ? order.Customer_id.toString() : null,
       Company_id: order.Company_id.toString(),
       customer: {
         ...order.customer,
-        id: order.customer.id.toString()
+        id: order.customer?.id ? order.customer.id.toString() : null
       },
       orderSteps: order.orderSteps.map(step => ({
         ...step,
@@ -373,12 +377,12 @@ const getOrderById = async (req, res) => {
     const formattedOrder = {
       ...order,
       id: order.id.toString(),
-      Customer_id: order.Customer_id.toString(),
+      Customer_id: order.Customer_id ? order.Customer_id.toString() : null,
       Company_id: order.Company_id.toString(),
       customer: {
         ...order.customer,
-        id: order.customer.id.toString(),
-        Company_Id: order.customer.Company_Id.toString()
+        id: order.customer?.id ? order.customer.id.toString() : null,
+        Company_Id: order.customer?.Company_Id ? order.customer.Company_Id.toString() : null
       },
       orderSteps: order.orderSteps.map(step => ({
         ...step,
@@ -393,7 +397,8 @@ const getOrderById = async (req, res) => {
         assignedUser: step.assignedUser ? {
           ...step.assignedUser,
           id: step.assignedUser.id.toString()
-        } : null
+        } : null,
+        notes: step.notes || null
       }))
     };
 

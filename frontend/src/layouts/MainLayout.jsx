@@ -85,6 +85,13 @@ const MainLayout = ({ children }) => {
       requireSuperAdmin: true,
       gradient: 'from-purple-500 to-purple-600'
     },
+    {
+      name: 'Raporlar',
+      href: '/reports',
+      icon: '📊',
+      requirePermission: 'REPORT_READ',
+      gradient: 'from-pink-500 to-pink-600'
+    },
   ]
 
   const isActive = (href) => location.pathname === href

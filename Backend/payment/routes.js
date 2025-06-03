@@ -1,6 +1,6 @@
 const express = require('express');
 const PaymentController = require('./paymentController');
-const { authenticateToken } = require('../auth/middleware/authMiddleware');
+const { authenticateToken, authenticateSystemAdmin } = require('../auth/middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -15,5 +15,8 @@ router.get('/history/:userId', authenticateToken, PaymentController.getPaymentHi
 router.get('/cards/check/:userId', authenticateToken, PaymentController.getCardUserKeyOrNull);
 router.get('/cards/:userId', authenticateToken, PaymentController.getUserCards);
 router.post('/cards/save', authenticateToken, PaymentController.saveUserCard);
+
+// Admin için tüm ödemeleri getirir
+router.get('/admin/all-payments', authenticateSystemAdmin, PaymentController.getAllPayments);
 
 module.exports = router; 

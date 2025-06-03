@@ -34,7 +34,7 @@ const authenticateToken = async (req, res, next) => {
 
     // Token'ı doğrula
     const decoded = verifyJWTToken(token);
-    if (!decoded) {
+    if (!decoded || !decoded.userId) {
       return res.status(401).json({ message: 'Geçersiz veya süresi dolmuş token. Lütfen tekrar giriş yapın.' });
     }
 
