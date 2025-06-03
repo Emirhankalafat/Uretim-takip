@@ -434,7 +434,8 @@ const UserManagementPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Kullanıcılar ve Permissionlar alt alta */}
+      <div className="space-y-6">
         {/* Users List */}
         <div className="bg-white rounded-xl shadow-soft border border-gray-100">
           <div className="p-6 border-b border-gray-200">
@@ -506,7 +507,66 @@ const UserManagementPage = () => {
                   ×
                 </button>
               </div>
-              
+              {/* Hazır Paketler */}
+              <div className="mt-6">
+                <h3 className="text-md font-semibold text-gray-800 mb-2">Hazır Paketler</h3>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="bg-blue-100 text-blue-800 px-3 py-1 rounded hover:bg-blue-200 transition text-sm font-medium"
+                    onClick={() => {
+                      // Çalışan: MY_JOBS
+                      const paketYetkileri = ['MY_JOBS']
+                      const ids = availablePermissions.filter(p => paketYetkileri.includes(p.Name.replace(/\s/g, '').toUpperCase())).map(p => p.id)
+                      setLocalPermissions(ids)
+                      setHasChanges(true)
+                    }}
+                  >Çalışan</button>
+                  <button
+                    type="button"
+                    className="bg-green-100 text-green-800 px-3 py-1 rounded hover:bg-green-200 transition text-sm font-medium"
+                    onClick={() => {
+                      // Sadece MyJobs: MY_JOBS
+                      const paketYetkileri = ['MY_JOBS']
+                      const ids = availablePermissions.filter(p => paketYetkileri.includes(p.Name.replace(/\s/g, '').toUpperCase())).map(p => p.id)
+                      setLocalPermissions(ids)
+                      setHasChanges(true)
+                    }}
+                  >Sadece MyJobs</button>
+                  <button
+                    type="button"
+                    className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded hover:bg-yellow-200 transition text-sm font-medium"
+                    onClick={() => {
+                      // Usta: MY_JOBS, PRODUCT_READ, PRODUCT_UPDATE
+                      const paketYetkileri = ['MY_JOBS','PRODUCT_READ','PRODUCT_UPDATE']
+                      const ids = availablePermissions.filter(p => paketYetkileri.includes(p.Name.replace(/\s/g, '').toUpperCase())).map(p => p.id)
+                      setLocalPermissions(ids)
+                      setHasChanges(true)
+                    }}
+                  >Usta</button>
+                  <button
+                    type="button"
+                    className="bg-purple-100 text-purple-800 px-3 py-1 rounded hover:bg-purple-200 transition text-sm font-medium"
+                    onClick={() => {
+                      // User Management: USER_MANAGEMENT
+                      const paketYetkileri = ['USER_MANAGEMENT']
+                      const ids = availablePermissions.filter(p => paketYetkileri.includes(p.Name.replace(/\s/g, '').toUpperCase())).map(p => p.id)
+                      setLocalPermissions(ids)
+                      setHasChanges(true)
+                    }}
+                  >User Management</button>
+                  <button
+                    type="button"
+                    className="bg-red-100 text-red-800 px-3 py-1 rounded hover:bg-red-200 transition text-sm font-medium"
+                    onClick={() => {
+                      // Yönetici: Tüm yetkiler
+                      const ids = availablePermissions.map(p => p.id)
+                      setLocalPermissions(ids)
+                      setHasChanges(true)
+                    }}
+                  >Yönetici</button>
+                </div>
+              </div>
               {/* Save/Discard Buttons */}
               {hasChanges && (
                 <div className="mt-4 flex space-x-3">
@@ -557,17 +617,15 @@ const UserManagementPage = () => {
                         {!['USER', 'ADMIN', 'PRODUCTION', 'REPORT', 'SYSTEM'].includes(type) && `📋 ${type} Yetkileri`}
                       </h3>
                       
-                      <div className="grid grid-cols-1 gap-2">
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                         {permissions.map((permission) => {
                           const isChecked = localPermissions.includes(permission.id)
                           const translation = getPermissionTranslation(permission.Name)
-                          
                           // Yetki kontrolü
                           const canModify = currentUser?.is_SuperAdmin || 
                             (permission.Name !== 'USER_MANAGEMENT' && !selectedUser.is_SuperAdmin)
-                          
                           return (
-                            <label key={permission.id} className={`flex items-start space-x-3 p-4 rounded-lg border transition-all cursor-pointer ${
+                            <label key={permission.id} className={`flex items-start space-x-2 p-2 rounded border transition-all cursor-pointer text-xs ${
                               isChecked 
                                 ? 'bg-primary-50 border-primary-200' 
                                 : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
@@ -577,31 +635,31 @@ const UserManagementPage = () => {
                                 checked={isChecked}
                                 onChange={(e) => canModify && handlePermissionChange(permission.id, e.target.checked)}
                                 disabled={!canModify}
-                                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mt-1"
+                                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mt-0.5"
                               />
                               <div className="flex-1">
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="font-semibold text-gray-900">
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="font-semibold text-gray-900 text-xs">
                                     {translation.name}
                                   </span>
-                                  <span className={`text-xs px-2 py-1 rounded-full ${
+                                  <span className={`text-2xs px-1 py-0.5 rounded-full ${
                                     isChecked 
                                       ? 'bg-primary-100 text-primary-800' 
                                       : 'bg-gray-100 text-gray-600'
                                   }`}>
-                                    {isChecked ? '✓ Aktif' : '✗ Pasif'}
+                                    {isChecked ? '✓' : '✗'}
                                   </span>
                                 </div>
-                                <p className="text-sm text-gray-600 mb-2">
+                                <p className="text-2xs text-gray-600 mb-0.5 line-clamp-2">
                                   {translation.description}
                                 </p>
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs text-gray-400 font-mono">
+                                  <span className="text-2xs text-gray-400 font-mono">
                                     {permission.Name}
                                   </span>
                                   {!canModify && (
-                                    <span className="text-xs text-red-600 font-medium">
-                                      {permission.Name === 'USER_MANAGEMENT' ? '🔒 Sadece SuperAdmin' : '🚫 Değiştirilemez'}
+                                    <span className="text-2xs text-red-600 font-medium">
+                                      {permission.Name === 'USER_MANAGEMENT' ? '🔒' : '🚫'}
                                     </span>
                                   )}
                                 </div>

@@ -26,6 +26,7 @@ const getMyJobs = async (req, res) => {
             status: true,
             priority: true,
             deadline: true,
+            notes: true,
             customer: {
               select: { id: true, Name: true }
             }
@@ -59,6 +60,7 @@ const getMyJobs = async (req, res) => {
             status: true,
             priority: true,
             deadline: true,
+            notes: true,
             customer: {
               select: { id: true, Name: true }
             }
@@ -104,6 +106,7 @@ const getMyJobs = async (req, res) => {
           order: step.order ? {
             ...step.order,
             id: step.order.id?.toString(),
+            notes: step.order.notes || '',
             customer: step.order.customer ? {
               ...step.order.customer,
               id: step.order.customer.id?.toString()
@@ -129,6 +132,7 @@ const getMyJobs = async (req, res) => {
       order: step.order ? {
         ...step.order,
         id: step.order.id?.toString(),
+        notes: step.order.notes || '',
         customer: step.order.customer ? {
           ...step.order.customer,
           id: step.order.customer.id?.toString()
@@ -233,6 +237,7 @@ const getMyJobDetail = async (req, res) => {
       order: jobDetail.order ? {
         ...jobDetail.order,
         id: jobDetail.order.id?.toString(),
+        notes: jobDetail.order.notes || '',
         Customer_id: jobDetail.order.Customer_id?.toString(),
         Company_id: jobDetail.order.Company_id?.toString(),
         customer: jobDetail.order.customer ? {

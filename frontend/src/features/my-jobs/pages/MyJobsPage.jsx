@@ -239,56 +239,69 @@ const MyJobsPage = () => {
               </p>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {jobs[activeTab]?.map((job) => (
-                <div
-                  key={job.id}
-                  className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl p-6 hover:shadow-medium transition-all duration-300 cursor-pointer"
-                  onClick={() => showJobDetails(job)}
-                >
-                  {/* Job Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${getPriorityColor(job.order.priority)}`}></div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{job.step_name}</h3>
-                        <p className="text-sm text-gray-600">#{job.order.order_number}</p>
+            // Siparişe göre grupla
+            (() => {
+              const grouped = {};
+              jobs[activeTab].forEach(job => {
+                const orderId = job.Order_id || job.order?.id;
+                if (!grouped[orderId]) {
+                  grouped[orderId] = {
+                    order: job.order,
+                    jobs: []
+                  };
+                }
+                grouped[orderId].jobs.push(job);
+              });
+              return (
+                <div className="space-y-8">
+                  {Object.entries(grouped).map(([orderId, group]) => (
+                    <div key={orderId} className="border border-gray-200 rounded-xl p-4 bg-white">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <span className="font-semibold text-lg text-gray-900">{group.order?.order_number || 'Sipariş #' + orderId}</span>
+                          {group.order?.notes && (
+                            <span className="ml-2 px-2 py-1 bg-yellow-50 text-yellow-800 rounded text-xs max-w-xs truncate" title={group.order.notes}>
+                              <b>Sipariş Notu:</b> {group.order.notes}
+                            </span>
+                          )}
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(group.order?.priority)}`}>{group.order?.priority}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-4">
+                        {group.jobs.map(job => (
+                          <div
+                            key={job.id}
+                            className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl p-4 hover:shadow-medium transition-all duration-300 cursor-pointer w-64"
+                            onClick={() => showJobDetails(job)}
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div>
+                                <h3 className="font-semibold text-gray-900">{job.step_name}</h3>
+                                <p className="text-sm text-gray-600">Adım {job.step_number}</p>
+                              </div>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>{job.status === 'WAITING' ? 'Bekliyor' : job.status === 'IN_PROGRESS' ? 'Devam Ediyor' : 'Tamamlandı'}</span>
+                            </div>
+                            <div className="space-y-1 mb-2">
+                              <div className="flex items-center text-xs text-gray-600">
+                                <span className="w-4 h-4 mr-1">👤</span>
+                                <span>{job.order?.customer?.Name || "Bilinmiyor"}</span>
+                              </div>
+                              <div className="flex items-center text-xs text-gray-600">
+                                <span className="w-4 h-4 mr-1">📦</span>
+                                <span>{job.product?.name || "Bilinmiyor"}</span>
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {job.isMyTurn ? '✅ Sıra sende' : '⏳ Sıra bekliyor'}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
-                      {job.status === 'WAITING' ? 'Bekliyor' : 
-                       job.status === 'IN_PROGRESS' ? 'Devam Ediyor' : 'Tamamlandı'}
-                    </span>
-                  </div>
-
-                  {/* Job Details */}
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <span className="w-4 h-4 mr-2">👤</span>
-                      <span>{job.order?.customer?.Name || "Bilinmiyor"}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <span className="w-4 h-4 mr-2">📦</span>
-                      <span>{job.product?.name || "Bilinmiyor"}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <span className="w-4 h-4 mr-2">🔢</span>
-                      <span>Adım {job.step_number}</span>
-                    </div>
-                  </div>
-
-                  {/* Action Indicator */}
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-gray-500">
-                      {job.isMyTurn ? '✅ Sıra sende' : '⏳ Sıra bekliyor'}
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      Detay için tıkla →
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              );
+            })()
           )}
         </div>
       </div>

@@ -518,6 +518,9 @@ const OrdersPage = () => {
                               📦 Stok
                             </span>
                           )}
+                          {order.notes && (
+                            <span className="ml-2 px-2 py-1 bg-yellow-50 text-yellow-800 rounded text-xs max-w-xs truncate" title={order.notes}>{order.notes}</span>
+                          )}
                         </div>
                         {order.deadline && (
                           <div className="text-sm text-gray-500">
@@ -547,11 +550,6 @@ const OrdersPage = () => {
                         <button className="text-primary-600 hover:text-primary-900 p-1" onClick={() => navigate(`/orders/${order.id}`)}>
                           👁️
                         </button>
-                        {canUpdate && (
-                          <button className="text-warning-600 hover:text-warning-900 p-1">
-                            ✏️
-                          </button>
-                        )}
                         {canDelete && (
                           <button 
                             onClick={() => handleDeleteOrder(order.id, order.order_number)}

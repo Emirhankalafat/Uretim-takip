@@ -463,8 +463,8 @@ const updateOrder = async (req, res) => {
       order: {
         ...updatedOrder,
         id: updatedOrder.id.toString(),
-        Customer_id: updatedOrder.Customer_id.toString(),
-        Company_id: updatedOrder.Company_id.toString()
+        Customer_id: updatedOrder.Customer_id ? updatedOrder.Customer_id.toString() : null,
+        Company_id: updatedOrder.Company_id ? updatedOrder.Company_id.toString() : null
       }
     });
   } catch (error) {
