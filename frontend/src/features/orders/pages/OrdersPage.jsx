@@ -6,6 +6,7 @@ import productService from '../../products/services/productService'
 import userService from '../../users/services/userService'
 import usePermissions from '../../../hooks/usePermissions'
 import Toast from '../../../components/Toast'
+import { useSelector } from 'react-redux'
 
 const OrdersPage = () => {
   const [orders, setOrders] = useState([])
@@ -43,9 +44,12 @@ const OrdersPage = () => {
   const { hasPermission } = usePermissions()
   const navigate = useNavigate()
 
+  const user = useSelector((state) => state.auth.user);
+  const isSuperAdmin = user?.is_SuperAdmin;
+
   // Yetki kontrolü - sadece create yetkisi varken müşteri ve ürün listelerini çek
-  const canReadCustomers = hasPermission('CUSTOMER_READ')
-  const canReadProducts = hasPermission('PRODUCT_READ')
+  const canReadCustomers = isSuperAdmin || hasPermission('CUSTOMER_READ')
+  const canReadProducts = isSuperAdmin || hasPermission('PRODUCT_READ')
 
   useEffect(() => {
     if (canRead) {
@@ -588,7 +592,7 @@ const OrdersPage = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Müşteri *
                 </label>
-                {!canReadCustomers ? (
+                {!canReadCustomers && !isSuperAdmin ? (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                     <div className="flex">
                       <div className="flex-shrink-0">
@@ -692,7 +696,7 @@ const OrdersPage = () => {
                   <label className="block text-sm font-medium text-gray-700">
                     Ürünler *
                   </label>
-                  {canReadProducts ? (
+                  {canReadProducts || isSuperAdmin ? (
                     <button
                       type="button"
                       onClick={addProduct}
@@ -703,7 +707,7 @@ const OrdersPage = () => {
                   ) : null}
                 </div>
 
-                {!canReadProducts ? (
+                {!canReadProducts && !isSuperAdmin ? (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                     <div className="flex">
                       <div className="flex-shrink-0">

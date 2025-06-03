@@ -12,6 +12,7 @@ const customerRoutes = require('./customer/customerRoutes');
 const orderRoutes = require('./orders/orderRoutes');
 const myJobsRoutes = require('./my-jobs/myJobsRoutes');
 const paymentRoutes = require('./payment/routes');
+const adminRoutes = require('./admin/adminRoutes');
 const { startTokenCleanupScheduler } = require('./auth/utils/scheduler');
 const { authenticateToken } = require('./auth/middleware/authMiddleware');
 const { csrfProtection } = require('./auth/middleware/csrfMiddleware');
@@ -20,6 +21,9 @@ const { checkInvite, acceptInvite } = require('./user/userController');
 const cron = require('node-cron');
 const subscriptionReminderJob = require('./utils/subscriptionReminder');
 const checkExpiredSubscriptions = require('./utils/subscriptionControl');
+const rateLimit = require('express-rate-limit');
+const { RedisStore } = require('rate-limit-redis');
+const { redisClient } = require('./config/redis');
 require('dotenv').config();
 
 // Production modunu kontrol et
@@ -91,8 +95,23 @@ if (isProduction) {
   }));
 }
 
+// Rate limit middleware (Redis tabanlı)
+const authRateLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 dakika
+  max: 20, // 5 dakikada 20 istek
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 429,
+    message: 'Çok fazla istek yaptınız. Lütfen daha sonra tekrar deneyin.'
+  },
+  store: new RedisStore({
+    sendCommand: async (...args) => redisClient.sendCommand(args)
+  })
+});
+
 // Auth routes (CSRF koruması yok)
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRateLimiter, authRoutes);
 
 // Public user routes (authentication gerekmez)
 app.get('/api/user/check-invite', checkInvite);
@@ -110,6 +129,9 @@ app.use('/api/product-steps', authenticateToken, csrfProtection, productStepsRou
 app.use('/api/customers', authenticateToken, csrfProtection, customerRoutes);
 app.use('/api/orders', authenticateToken, csrfProtection, orderRoutes);
 app.use('/api/my-jobs', authenticateToken, csrfProtection, myJobsRoutes);
+
+// Admin routes - authentication ve CSRF koruması gerekli
+app.use('/api/admin', authenticateToken, csrfProtection, adminRoutes);
 
 // Token yönetim scheduler'ını başlat
 // Sadece revoke et (önerilen)

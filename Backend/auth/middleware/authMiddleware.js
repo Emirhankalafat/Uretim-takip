@@ -1,6 +1,7 @@
 const { verifyJWTToken } = require('../utils/tokenUtils');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const logger = require('../../utils/logger');
 
 const authenticateToken = async (req, res, next) => {
   try {
@@ -40,7 +41,7 @@ const authenticateToken = async (req, res, next) => {
     // Kullanıcının hala aktif ve onaylı olup olmadığını kontrol et
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      include: { company: true }
+      include: { company: true } 
     });
 
     if (!user) {
@@ -69,9 +70,46 @@ const authenticateToken = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('Auth middleware hatası:', error);
+    logger.error('Auth middleware hatası:', error);
     res.status(500).json({ message: 'Sunucu hatası.' });
   }
 };
 
-module.exports = { authenticateToken }; 
+const authenticateSystemAdmin = async (req, res, next) => {
+  try {
+    let token = req.cookies.accessToken;
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
+    if (!token && req.body.accessToken) {
+      token = req.body.accessToken;
+      res.cookie('accessToken', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000
+      });
+    }
+    if (!token) {
+      return res.status(401).json({ message: 'Erişim token\'ı bulunamadı. Lütfen giriş yapın.' });
+    }
+    const decoded = verifyJWTToken(token);
+    if (!decoded || !decoded.adminId) {
+      return res.status(401).json({ message: 'Geçersiz veya süresi dolmuş token. Lütfen tekrar giriş yapın.' });
+    }
+    const admin = await prisma.systemAdmin.findUnique({ where: { id: decoded.adminId } });
+    if (!admin || !admin.isActive) {
+      return res.status(401).json({ message: 'Sistem yöneticisi bulunamadı veya pasif.' });
+    }
+    req.systemAdmin = { id: Number(admin.id), email: admin.email };
+    next();
+  } catch (error) {
+    logger.error('SystemAdmin auth middleware hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
+module.exports = { authenticateToken, authenticateSystemAdmin }; 

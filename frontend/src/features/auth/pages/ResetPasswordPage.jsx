@@ -64,17 +64,22 @@ const ResetPasswordPage = () => {
       toast.error('Yeni şifre gereklidir')
       return false
     }
-
-    if (formData.newPassword.length < 6) {
-      toast.error('Şifre en az 6 karakter olmalıdır')
+    if (formData.newPassword.length < 8) {
+      toast.error('Şifre en az 8 karakter olmalıdır')
       return false
     }
-
+    if (!/[A-Z]/.test(formData.newPassword)) {
+      toast.error('Şifre en az bir büyük harf içermelidir')
+      return false
+    }
+    if (!/[a-z]/.test(formData.newPassword)) {
+      toast.error('Şifre en az bir küçük harf içermelidir')
+      return false
+    }
     if (formData.newPassword !== formData.confirmPassword) {
       toast.error('Şifreler eşleşmiyor')
       return false
     }
-
     return true
   }
 
@@ -194,7 +199,7 @@ const ResetPasswordPage = () => {
                   value={formData.newPassword}
                   onChange={handleInputChange}
                   className="appearance-none relative block w-full pr-10 pl-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm transition-colors"
-                  placeholder="En az 6 karakter"
+                  placeholder="En az 8 karakter, en az bir büyük ve bir küçük harf içermelidir"
                 />
                 <button
                   type="button"
@@ -275,7 +280,7 @@ const ResetPasswordPage = () => {
                 </div>
                 <div className="ml-3">
                   <p className="text-sm text-blue-700">
-                    Güvenliğiniz için şifreniz en az 6 karakter olmalı ve güçlü bir kombinasyon içermelidir.
+                    Güvenliğiniz için şifreniz en az 8 karakter olmalı, en az bir büyük ve bir küçük harf içermelidir.
                   </p>
                 </div>
               </div>

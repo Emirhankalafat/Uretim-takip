@@ -38,6 +38,13 @@ router.get('/user/:userId',
   getUserPermissions
 );
 
+// Yeni: Kullanıcının permission'larını /permissions ile de görebilmek için
+router.get('/user/:userId/permissions', 
+  authenticateToken, 
+  requireSameCompany, 
+  getUserPermissions
+);
+
 // Kullanıcıya permission ekleme (aynı şirket + permission kontrolü)
 router.post('/add-permission', 
   authenticateToken, 

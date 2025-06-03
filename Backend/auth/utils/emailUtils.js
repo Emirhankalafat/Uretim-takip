@@ -1,30 +1,31 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-// Environment kontrolü
+// Ortam kontrolü
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Email ayarlarının varlığını kontrol et
+// Email yapılandırma kontrolü
 const isEmailConfigured = () => {
-  return process.env.EMAIL_USER && process.env.EMAIL_PASS;
+  return Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
 };
 
-// Email transporter oluştur
+// Gmail (Google Workspace) transporter
 const createTransporter = () => {
   if (!isEmailConfigured()) {
-    console.warn('Email ayarları yapılandırılmamış. EMAIL_USER ve EMAIL_PASS environment variables gerekli.');
+    console.warn('⚠️ EMAIL_USER ve EMAIL_PASS environment değişkenleri eksik.');
     return null;
   }
 
   return nodemailer.createTransport({
-    service: 'gmail',
+    service: 'Gmail',
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
+      user: process.env.EMAIL_USER,  // örn: info@uretimgo.com
+      pass: process.env.EMAIL_PASS   // uygulama şifresi (App Password)
     }
   });
 };
+
 
 // Environment'a göre base URL belirle
 const getBaseUrl = () => {
@@ -133,7 +134,7 @@ const sendConfirmEmail = async (userEmail, userName, confirmToken) => {
       : 'Hesap Doğrulama - Üretim Takip Sistemi';
     
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"ÜretimGO Destek" <${process.env.EMAIL_USER}>`,
       to: userEmail,
       subject: subject,
       html: `
@@ -243,7 +244,7 @@ const sendInviteEmail = async (userEmail, companyName, inviteToken) => {
       : `${companyName} - Davet`;
     
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"ÜretimGO Destek" <${process.env.EMAIL_USER}>`,
       to: userEmail,
       subject: subject,
       html: `
@@ -366,7 +367,7 @@ const sendPasswordResetEmail = async (userEmail, userName, resetToken) => {
       : 'Şifre Sıfırlama - Üretim Takip Sistemi';
     
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"ÜretimGO Destek" <${process.env.EMAIL_USER}>`,
       to: userEmail,
       subject: subject,
       html: `
@@ -486,7 +487,7 @@ const sendPaymentSuccessEmail = async (userEmail, userName, price, endDate, card
       ? `Şirketiniz (${companyName}) için premium üyelik başarıyla <b>yenilendi</b>.`
       : `Şirketiniz (${companyName}) için premium üyelik <b>aktifleştirildi</b>.`;
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"ÜretimGO Destek" <${process.env.EMAIL_USER}>`,
       to: userEmail,
       subject: subject,
       html: `
@@ -559,7 +560,7 @@ const sendSubscriptionReminderEmail = async (adminEmail, adminName, companyName,
       ? `[DEV] ${companyName} - Premium Abonelik Hatırlatma`
       : `${companyName} - Premium Abonelik Hatırlatma`;
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"ÜretimGO Destek" <${process.env.EMAIL_USER}>`,
       to: adminEmail,
       subject: subject,
       html: `
