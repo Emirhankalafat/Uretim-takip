@@ -53,14 +53,17 @@ const AuthInitializer = ({ children }) => {
       const isPublicPath = publicPaths.includes(currentPath) || 
                           currentPath.startsWith('/auth/reset-password') ||
                           currentPath.startsWith('/reset-password')
-      
+      // Admin paneldeysek initialize etme
+      const isAdminPanel = currentPath.startsWith('/admin');
+      if (isAdminPanel) {
+        dispatch(initializeSuccess(null));
+        return;
+      }
       if (isPublicPath) {
         // Public sayfalarda backend'den auth durumunu kontrol et
         dispatch(initializeStart())
-        
         try {
           const userData = await authService.initialize()
-          
           if (userData && userData.user) {
             // Login olmuş kullanıcılar tüm public sayfalarda dashboard'a yönlendirilir
             console.log(`✅ Login olmuş kullanıcı public sayfada - Dashboard'a yönlendiriliyor: ${currentPath}`)
@@ -75,7 +78,6 @@ const AuthInitializer = ({ children }) => {
           // Auth başarısız - public sayfada kal
           console.log(`🔓 Public sayfa auth hatası: ${error.message}`)
           dispatch(initializeSuccess(null))
-          
           // Public sayfalarda herhangi bir yönlendirme yapma
           // Sadece ciddi server hataları için login'e yönlendir
           if (error.response?.status >= 500) {
@@ -83,10 +85,8 @@ const AuthInitializer = ({ children }) => {
             navigate('/login', { replace: true })
           }
         }
-        
         return
       }
-
       // Protected sayfalarda normal auth kontrolü yap
       console.log(`🔒 Protected sayfa: ${location.pathname} - Auth kontrolü yapılıyor`)
       dispatch(initializeStart())
@@ -102,7 +102,6 @@ const AuthInitializer = ({ children }) => {
         dispatch(initializeFailure())
       }
     }
-
     if (!initialized) {
       initializeAuth()
     }

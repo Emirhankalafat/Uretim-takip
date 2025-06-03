@@ -34,6 +34,12 @@ const CheckoutFormPage = lazy(() => import('../features/payment/pages/CheckoutFo
 const PaymentSuccessPage = lazy(() => import('../features/payment/pages/PaymentSuccessPage'))
 const PaymentFailPage = lazy(() => import('../features/payment/pages/PaymentFailPage'))
 
+// Admin Pages
+const AdminLoginPage = lazy(() => import('../features/admin/pages/AdminLoginPage'))
+const AdminDashboardPage = lazy(() => import('../features/admin/pages/AdminDashboardPage'))
+import AdminLayout from '../layouts/AdminLayout'
+const AdminUsersPage = lazy(() => import('../features/admin/pages/AdminUsersPage'))
+
 // Loading Component
 const LoadingScreen = ({ message = "Sayfa yükleniyor..." }) => {
   return (
@@ -99,6 +105,22 @@ const PublicRoute = ({ children }) => {
   return (
     <Suspense fallback={<LoadingScreen message="Sayfa yükleniyor..." />}>
       {children}
+    </Suspense>
+  )
+}
+
+// Admin Protected Route
+const AdminProtectedRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useSelector((state) => state.adminAuth)
+  if (loading) {
+    return <LoadingScreen message="Admin kimlik doğrulanıyor..." />
+  }
+  if (!isAuthenticated) {
+    return <Navigate to="/admin/login" replace />
+  }
+  return (
+    <Suspense fallback={<LoadingScreen message="Sayfa yükleniyor..." />}>
+      <AdminLayout>{children}</AdminLayout>
     </Suspense>
   )
 }
@@ -339,6 +361,35 @@ const AppRoutes = () => {
           <PublicRoute>
             <HomePage />
           </PublicRoute>
+        }
+      />
+      
+      {/* Admin Login Route */}
+      <Route
+        path="/admin/login"
+        element={
+          <Suspense fallback={<LoadingScreen message="Sayfa yükleniyor..." />}>
+            <AdminLoginPage />
+          </Suspense>
+        }
+      />
+      {/* Admin Panel Routes */}
+      <Route
+        path="/admin"
+        element={
+          <AdminProtectedRoute>
+            <AdminDashboardPage />
+          </AdminProtectedRoute>
+        }
+      />
+      
+      {/* Admin Users Route */}
+      <Route
+        path="/admin/users"
+        element={
+          <AdminProtectedRoute>
+            <AdminUsersPage />
+          </AdminProtectedRoute>
         }
       />
       

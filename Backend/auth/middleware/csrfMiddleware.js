@@ -37,8 +37,9 @@ const csrfProtection = (req, res, next) => {
     return next();
   }
 
-  // Kullanıcı bilgisi var mı kontrol et (auth middleware'den sonra çalışmalı)
-  if (!req.user || !req.user.id) {
+  // Kullanıcı veya admin bilgisi var mı kontrol et (auth middleware'den sonra çalışmalı)
+  const userId = req.user?.id || req.systemAdmin?.id;
+  if (!userId) {
     return res.status(401).json({ 
       message: 'Kullanıcı bilgisi bulunamadı. Lütfen giriş yapın.' 
     });
@@ -49,7 +50,7 @@ const csrfProtection = (req, res, next) => {
 
   // Development mode debug logs
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`🔍 CSRF Debug - User: ${req.user.id}, Path: ${req.path}, Method: ${req.method}`);
+    console.log(`🔍 CSRF Debug - User: ${userId}, Path: ${req.path}, Method: ${req.method}`);
     console.log(`🔍 Token from header: ${csrfToken ? csrfToken.substring(0, 16) + '...' : 'NULL'}`);
   }
 
@@ -60,40 +61,34 @@ const csrfProtection = (req, res, next) => {
   }
 
   // CSRF token'ı doğrula
-  verifyCsrfToken(req.user.id, csrfToken)
+  verifyCsrfToken(userId, csrfToken)
     .then(async (isValid) => {
       // Development mode debug logs
       if (process.env.NODE_ENV !== 'production') {
         console.log(`🔍 Token validation result: ${isValid}`);
-        
         if (!isValid) {
           // Redis'teki token'ı da kontrol edelim
-          const storedToken = await getCsrfToken(req.user.id);
+          const storedToken = await getCsrfToken(userId);
           console.log(`🔍 Stored token in Redis: ${storedToken ? storedToken.substring(0, 16) + '...' : 'NULL'}`);
           console.log(`🔍 Sent token: ${csrfToken.substring(0, 16)}...`);
           console.log(`🔍 Tokens match: ${storedToken === csrfToken}`);
         }
       }
-      
       if (!isValid) {
         return res.status(403).json({ 
           message: 'Geçersiz CSRF token. Lütfen sayfayı yenileyin.' 
         });
       }
-
       // Token geçerli, yeni token oluştur ve response header'ına ekle
       try {
-        const newCsrfToken = await refreshCsrfToken(req.user.id);
+        const newCsrfToken = await refreshCsrfToken(userId);
         res.setHeader('X-New-CSRF-Token', newCsrfToken);
-        
         // Development mode debug logs
         if (process.env.NODE_ENV !== 'production') {
           console.log(`🔍 New CSRF token generated: ${newCsrfToken.substring(0, 16)}...`);
         }
-        
         // Request'e yeni token'ı ekle (isteğe bağlı)
         req.newCsrfToken = newCsrfToken;
-        
         next();
       } catch (error) {
         console.error('CSRF token yenileme hatası:', error);

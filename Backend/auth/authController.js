@@ -22,6 +22,7 @@ const {
   updateCsrfTokenTTL 
 } = require('./utils/csrfUtils');
 const logger = require('../utils/logger');
+const jwt = require('jsonwebtoken');
 
 const registerCompanyUser = async (req, res) => {
   try {
@@ -696,6 +697,68 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// SystemAdmin login
+const adminLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log('[adminLogin] Giriş denemesi:', { email, password });
+    if (!email || !password) {
+      console.log('[adminLogin] Eksik bilgi:', { email, password });
+      return res.status(400).json({ message: 'E-posta ve şifre gereklidir.' });
+    }
+    // SystemAdmin tablosunda admini bul
+    const admin = await prisma.systemAdmin.findUnique({ where: { email } });
+    console.log('[adminLogin] SystemAdmin tablosunda bulunan admin:', admin);
+    if (!admin || !admin.isActive) {
+      console.log('[adminLogin] Admin bulunamadı veya pasif:', { admin });
+      return res.status(401).json({ message: 'Geçersiz e-posta veya şifre.' });
+    }
+    // Şifre kontrolü
+    const isPasswordValid = await bcrypt.compare(password, admin.passwordHash);
+    console.log('[adminLogin] Şifre doğrulama sonucu:', isPasswordValid);
+    if (!isPasswordValid) {
+      console.log('[adminLogin] Şifre yanlış:', { email });
+      return res.status(401).json({ message: 'Geçersiz e-posta veya şifre.' });
+    }
+    // JWT oluştur
+    const token = jwt.sign(
+      { adminId: Number(admin.id), email: admin.email, role: 'systemAdmin' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+    // CSRF token oluştur
+    const csrfToken = await createCsrfToken(`admin_${admin.id}`);
+    // JWT'yi cookie'ye ekle
+    res.cookie('accessToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000 // 1 gün
+    });
+    // CSRF token'ı da cookie olarak gönder (JavaScript'ten erişilebilir)
+    res.cookie('csrfToken', csrfToken, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000 // 1 gün
+    });
+    res.status(200).json({
+      message: 'Admin girişi başarılı.',
+      token,
+      csrfToken,
+      admin: {
+        id: Number(admin.id),
+        email: admin.email,
+        name: admin.name || '',
+        role: 'systemAdmin'
+      }
+    });
+  } catch (error) {
+    console.error('Admin login hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
 module.exports = {
   registerCompanyUser,
   confirmUser,
@@ -709,4 +772,5 @@ module.exports = {
   forgotPassword,
   verifyResetToken,
   resetPassword,
+  adminLogin,
 };

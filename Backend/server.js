@@ -14,7 +14,7 @@ const myJobsRoutes = require('./my-jobs/myJobsRoutes');
 const paymentRoutes = require('./payment/routes');
 const adminRoutes = require('./admin/adminRoutes');
 const { startTokenCleanupScheduler } = require('./auth/utils/scheduler');
-const { authenticateToken } = require('./auth/middleware/authMiddleware');
+const { authenticateToken, authenticateSystemAdmin } = require('./auth/middleware/authMiddleware');
 const { csrfProtection } = require('./auth/middleware/csrfMiddleware');
 const { connectRedis } = require('./config/redis');
 const { checkInvite, acceptInvite } = require('./user/userController');
@@ -201,7 +201,7 @@ app.use('/api/orders', authenticateToken, csrfProtection, orderRoutes);
 app.use('/api/my-jobs', authenticateToken, csrfProtection, myJobsRoutes);
 
 // Admin routes - authentication ve CSRF koruması gerekli
-app.use('/api/admin', authenticateToken, csrfProtection, adminRoutes);
+app.use('/api/admin', authenticateSystemAdmin, adminRoutes);
 
 // Token yönetim scheduler'ını başlat
 // Sadece revoke et (önerilen)
