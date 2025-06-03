@@ -95,6 +95,11 @@ if (isProduction) {
   }));
 }
 
+// Rate limit log fonksiyonu
+function logRateLimit(req, key, message) {
+  console.warn(`[RATE LIMIT] IP: ${req.ip} - Key: ${key} - Path: ${req.originalUrl} - Message: ${message}`);
+}
+
 // Rate limit middleware (Redis tabanlı)
 const authRateLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 dakika
@@ -107,7 +112,65 @@ const authRateLimiter = rateLimit({
   },
   store: new RedisStore({
     sendCommand: async (...args) => redisClient.sendCommand(args)
-  })
+  }),
+  handler: (req, res, next, options) => {
+    logRateLimit(req, req.ip, 'AUTH rate limit aşıldı');
+    res.status(options.statusCode).json(options.message);
+  }
+});
+
+const paymentRateLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 dakika
+  max: 10, // 10 dakikada 10 istek
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 429,
+    message: 'Çok fazla ödeme isteği. Lütfen daha sonra tekrar deneyin.'
+  },
+  store: new RedisStore({
+    sendCommand: async (...args) => redisClient.sendCommand(args)
+  }),
+  handler: (req, res, next, options) => {
+    logRateLimit(req, req.ip, 'PAYMENT rate limit aşıldı');
+    res.status(options.statusCode).json(options.message);
+  }
+});
+
+const inviteRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 saat
+  max: 5, // 1 saatte 5 davet
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 429,
+    message: 'Çok fazla davet isteği. Lütfen daha sonra tekrar deneyin.'
+  },
+  store: new RedisStore({
+    sendCommand: async (...args) => redisClient.sendCommand(args)
+  }),
+  handler: (req, res, next, options) => {
+    logRateLimit(req, req.ip, 'INVITE rate limit aşıldı');
+    res.status(options.statusCode).json(options.message);
+  }
+});
+
+const resetPasswordRateLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 dakika
+  max: 5, // 10 dakikada 5 şifre sıfırlama
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 429,
+    message: 'Çok fazla şifre sıfırlama isteği. Lütfen daha sonra tekrar deneyin.'
+  },
+  store: new RedisStore({
+    sendCommand: async (...args) => redisClient.sendCommand(args)
+  }),
+  handler: (req, res, next, options) => {
+    logRateLimit(req, req.ip, 'RESET PASSWORD rate limit aşıldı');
+    res.status(options.statusCode).json(options.message);
+  }
 });
 
 // Auth routes (CSRF koruması yok)
@@ -118,7 +181,14 @@ app.get('/api/user/check-invite', checkInvite);
 app.post('/api/user/accept-invite', acceptInvite);
 
 // Payment routes - authentication logic payment/routes.js'de
-app.use('/api/payment', paymentRoutes);
+app.use('/api/payment', paymentRateLimiter, paymentRoutes);
+
+// Davet (invite) endpointi için rate limit (userRoutes.js'de /invite)
+app.use('/api/user/invite', inviteRateLimiter, userRoutes);
+
+// Şifre sıfırlama endpointleri için rate limit
+app.use('/api/auth/forgot-password', resetPasswordRateLimiter, authRoutes);
+app.use('/api/auth/reset-password', resetPasswordRateLimiter, authRoutes);
 
 // Diğer tüm route'lar için auth + CSRF koruması
 app.use('/api/permissions', authenticateToken, csrfProtection, permissionRoutes);

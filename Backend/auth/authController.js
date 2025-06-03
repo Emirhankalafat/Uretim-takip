@@ -21,6 +21,7 @@ const {
   getCsrfToken,
   updateCsrfTokenTTL 
 } = require('./utils/csrfUtils');
+const logger = require('../utils/logger');
 
 const registerCompanyUser = async (req, res) => {
   try {
@@ -196,6 +197,9 @@ const loginUser = async (req, res) => {
     if (!user.is_confirm) {
       return res.status(403).json({ message: 'Hesabınız henüz onaylanmamış. Lütfen e-posta adresinizi kontrol edin.' });
     }
+
+    // LOG: Başarılı giriş
+    logger.info(`[LOGIN] Kullanıcı: ${user.Mail} (id: ${user.id}) IP: ${req.ip} Zaman: ${new Date().toISOString()}`);
 
     // JWT access token oluştur (15 dakika)
     const accessToken = createJWTToken(Number(user.id), user.Mail, Number(user.company_id));

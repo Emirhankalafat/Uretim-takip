@@ -18,6 +18,12 @@ const ResetPasswordPage = () => {
   const [userInfo, setUserInfo] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [passwordStrength, setPasswordStrength] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    strength: 'Zayıf',
+  });
 
   // Token'ı doğrula
   useEffect(() => {
@@ -50,6 +56,17 @@ const ResetPasswordPage = () => {
 
     verifyToken()
   }, [token])
+
+  useEffect(() => {
+    const length = formData.newPassword && formData.newPassword.length >= 8;
+    const uppercase = /[A-Z]/.test(formData.newPassword || '');
+    const lowercase = /[a-z]/.test(formData.newPassword || '');
+    let strength = 'Zayıf';
+    const score = [length, uppercase, lowercase].filter(Boolean).length;
+    if (score === 3 && formData.newPassword.length >= 12) strength = 'Güçlü';
+    else if (score >= 2) strength = 'Orta';
+    setPasswordStrength({ length, uppercase, lowercase, strength });
+  }, [formData.newPassword]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -214,6 +231,20 @@ const ResetPasswordPage = () => {
                     )}
                   </svg>
                 </button>
+              </div>
+              {/* Şifre gereksinimleri barı */}
+              <div className="mt-2">
+                <div className="flex space-x-2 mb-1">
+                  <span className={`flex-1 h-2 rounded ${passwordStrength.length ? 'bg-emerald-500' : 'bg-gray-300'}`}></span>
+                  <span className={`flex-1 h-2 rounded ${passwordStrength.uppercase ? 'bg-emerald-500' : 'bg-gray-300'}`}></span>
+                  <span className={`flex-1 h-2 rounded ${passwordStrength.lowercase ? 'bg-emerald-500' : 'bg-gray-300'}`}></span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-600 mb-1">
+                  <span className={passwordStrength.length ? 'text-emerald-600 font-semibold' : ''}>8+ karakter</span>
+                  <span className={passwordStrength.uppercase ? 'text-emerald-600 font-semibold' : ''}>Büyük harf</span>
+                  <span className={passwordStrength.lowercase ? 'text-emerald-600 font-semibold' : ''}>Küçük harf</span>
+                </div>
+                <div className={`text-xs font-bold ${passwordStrength.strength === 'Güçlü' ? 'text-emerald-600' : passwordStrength.strength === 'Orta' ? 'text-yellow-600' : 'text-red-600'}`}>Şifre Gücü: {passwordStrength.strength}</div>
               </div>
             </div>
 

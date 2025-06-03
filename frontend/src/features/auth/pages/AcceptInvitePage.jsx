@@ -10,6 +10,13 @@ const AcceptInvitePage = () => {
   const [error, setError] = useState('')
   const [inviteInfo, setInviteInfo] = useState(null)
   const [checkingInvite, setCheckingInvite] = useState(true)
+  const [showPassword, setShowPassword] = useState(false)
+  const [passwordStrength, setPasswordStrength] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    strength: 'Zayıf',
+  })
   
   const inviteToken = searchParams.get('token')
 
@@ -49,6 +56,17 @@ const AcceptInvitePage = () => {
 
     checkInvite()
   }, [inviteToken])
+
+  useEffect(() => {
+    const length = password && password.length >= 8;
+    const uppercase = /[A-Z]/.test(password || '');
+    const lowercase = /[a-z]/.test(password || '');
+    let strength = 'Zayıf';
+    const score = [length, uppercase, lowercase].filter(Boolean).length;
+    if (score === 3 && password.length >= 12) strength = 'Güçlü';
+    else if (score >= 2) strength = 'Orta';
+    setPasswordStrength({ length, uppercase, lowercase, strength });
+  }, [password]);
 
   const onSubmit = async (data) => {
     try {
@@ -196,18 +214,47 @@ const AcceptInvitePage = () => {
                     {...register('password', {
                       required: 'Şifre gerekli',
                       minLength: {
-                        value: 6,
-                        message: 'Şifre en az 6 karakter olmalı',
+                        value: 8,
+                        message: 'Şifre en az 8 karakter olmalı',
+                      },
+                      validate: (value) => {
+                        if (!/[A-Z]/.test(value)) {
+                          return 'Şifre en az bir büyük harf içermeli';
+                        }
+                        if (!/[a-z]/.test(value)) {
+                          return 'Şifre en az bir küçük harf içermeli';
+                        }
+                        return true;
                       },
                     })}
-                    type="password"
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    type={showPassword ? 'text' : 'password'}
+                    className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                     placeholder="••••••••"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {/* ...svg... */}
+                  </button>
                 </div>
                 {errors.password && (
                   <p className="mt-2 text-sm text-red-600">{errors.password.message}</p>
                 )}
+                <div className="mt-2">
+                  <div className="flex space-x-2 mb-1">
+                    <span className={`flex-1 h-2 rounded ${passwordStrength.length ? 'bg-emerald-500' : 'bg-gray-300'}`}></span>
+                    <span className={`flex-1 h-2 rounded ${passwordStrength.uppercase ? 'bg-emerald-500' : 'bg-gray-300'}`}></span>
+                    <span className={`flex-1 h-2 rounded ${passwordStrength.lowercase ? 'bg-emerald-500' : 'bg-gray-300'}`}></span>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-600 mb-1">
+                    <span className={passwordStrength.length ? 'text-emerald-600 font-semibold' : ''}>8+ karakter</span>
+                    <span className={passwordStrength.uppercase ? 'text-emerald-600 font-semibold' : ''}>Büyük harf</span>
+                    <span className={passwordStrength.lowercase ? 'text-emerald-600 font-semibold' : ''}>Küçük harf</span>
+                  </div>
+                  <div className={`text-xs font-bold ${passwordStrength.strength === 'Güçlü' ? 'text-emerald-600' : passwordStrength.strength === 'Orta' ? 'text-yellow-600' : 'text-red-600'}`}>Şifre Gücü: {passwordStrength.strength}</div>
+                </div>
               </div>
 
               <div>
