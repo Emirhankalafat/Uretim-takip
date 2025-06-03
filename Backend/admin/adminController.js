@@ -180,6 +180,7 @@ const getSystemLogs = async (req, res) => {
     const formattedLogs = logs.map(log => ({
       ...log,
       id: log.id.toString(),
+      user_id: log.user_id ? log.user_id.toString() : null,
       user: log.user ? {
         ...log.user,
         id: log.user.id.toString()

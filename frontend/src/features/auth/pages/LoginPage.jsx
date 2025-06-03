@@ -140,8 +140,8 @@ const LoginPage = () => {
                     {...register('password', {
                       required: 'Şifre gerekli',
                       minLength: {
-                        value: 6,
-                        message: 'Şifre en az 6 karakter olmalı',
+                        value: 8,
+                        message: 'Şifre en az 8 karakter olmalı',
                       },
                     })}
                     type="password"

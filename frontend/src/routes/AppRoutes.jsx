@@ -39,6 +39,8 @@ const AdminLoginPage = lazy(() => import('../features/admin/pages/AdminLoginPage
 const AdminDashboardPage = lazy(() => import('../features/admin/pages/AdminDashboardPage'))
 import AdminLayout from '../layouts/AdminLayout'
 const AdminUsersPage = lazy(() => import('../features/admin/pages/AdminUsersPage'))
+const AdminCompaniesPage = lazy(() => import('../features/admin/pages/AdminCompaniesPage'))
+const AdminLogsPage = lazy(() => import('../features/admin/pages/AdminLogsPage'))
 
 // Loading Component
 const LoadingScreen = ({ message = "Sayfa yükleniyor..." }) => {
@@ -389,6 +391,24 @@ const AppRoutes = () => {
         element={
           <AdminProtectedRoute>
             <AdminUsersPage />
+          </AdminProtectedRoute>
+        }
+      />
+      {/* Admin Companies Route */}
+      <Route
+        path="/admin/companies"
+        element={
+          <AdminProtectedRoute>
+            <AdminCompaniesPage />
+          </AdminProtectedRoute>
+        }
+      />
+      {/* Admin Logs Route */}
+      <Route
+        path="/admin/logs"
+        element={
+          <AdminProtectedRoute>
+            <AdminLogsPage />
           </AdminProtectedRoute>
         }
       />

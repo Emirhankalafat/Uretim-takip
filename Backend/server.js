@@ -28,6 +28,7 @@ require('dotenv').config();
 
 // Production modunu kontrol et
 const isProduction = process.env.NODE_ENV === 'production';
+app.set('trust proxy', 1);
 
 // JSON ve URL encoded body parser - CORS'tan önce
 app.use(express.json());
@@ -46,13 +47,6 @@ app.post('/api/payment/3dsecure/callback', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
-  
-  console.log('=== İyzico Callback Debug ===');
-  console.log('Origin:', req.headers.origin);
-  console.log('User-Agent:', req.headers['user-agent']);
-  console.log('Content-Type:', req.headers['content-type']);
-  console.log('Body keys:', req.body ? Object.keys(req.body) : 'Body is null/undefined');
-  console.log('Raw body:', req.body);
   
   // PaymentController.handle3DSCallback'i direkt çağır
   const PaymentController = require('./payment/paymentController');
@@ -76,7 +70,6 @@ if (isProduction) {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.log('❌ CORS blocked origin:', origin);
         callback(new Error('Not allowed by CORS'));
       }
     },
@@ -218,11 +211,9 @@ runInitialJobs();
 
 // Scheduler (her saat başı kontrol, sadece UTC 00:00'da hatırlatma)
 cron.schedule('0 * * * *', async () => {
-  console.log('🕐 Saatlik abonelik kontrolü başlatılıyor...');
   await checkExpiredSubscriptions();
   const now = new Date();
   if (now.getUTCHours() === 0 && now.getUTCMinutes() === 0) {
-    console.log('🌅 UTC 00:00 - Günlük abonelik hatırlatması başlatılıyor...');
     await subscriptionReminderJob();
   }
 }, {

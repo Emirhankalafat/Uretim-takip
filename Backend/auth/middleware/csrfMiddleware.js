@@ -49,10 +49,7 @@ const csrfProtection = (req, res, next) => {
   const csrfToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];
 
   // Development mode debug logs
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`🔍 CSRF Debug - User: ${userId}, Path: ${req.path}, Method: ${req.method}`);
-    console.log(`🔍 Token from header: ${csrfToken ? csrfToken.substring(0, 16) + '...' : 'NULL'}`);
-  }
+  // (DEBUG LOGS REMOVED)
 
   if (!csrfToken) {
     return res.status(403).json({ 
@@ -64,16 +61,7 @@ const csrfProtection = (req, res, next) => {
   verifyCsrfToken(userId, csrfToken)
     .then(async (isValid) => {
       // Development mode debug logs
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`🔍 Token validation result: ${isValid}`);
-        if (!isValid) {
-          // Redis'teki token'ı da kontrol edelim
-          const storedToken = await getCsrfToken(userId);
-          console.log(`🔍 Stored token in Redis: ${storedToken ? storedToken.substring(0, 16) + '...' : 'NULL'}`);
-          console.log(`🔍 Sent token: ${csrfToken.substring(0, 16)}...`);
-          console.log(`🔍 Tokens match: ${storedToken === csrfToken}`);
-        }
-      }
+      // (DEBUG LOGS REMOVED)
       if (!isValid) {
         return res.status(403).json({ 
           message: 'Geçersiz CSRF token. Lütfen sayfayı yenileyin.' 
@@ -84,9 +72,7 @@ const csrfProtection = (req, res, next) => {
         const newCsrfToken = await refreshCsrfToken(userId);
         res.setHeader('X-New-CSRF-Token', newCsrfToken);
         // Development mode debug logs
-        if (process.env.NODE_ENV !== 'production') {
-          console.log(`🔍 New CSRF token generated: ${newCsrfToken.substring(0, 16)}...`);
-        }
+        // (DEBUG LOGS REMOVED)
         // Request'e yeni token'ı ekle (isteğe bağlı)
         req.newCsrfToken = newCsrfToken;
         next();

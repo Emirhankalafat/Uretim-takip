@@ -18,19 +18,19 @@ redisClient.on('error', (err) => {
 });
 
 redisClient.on('connect', () => {
-  console.log('🔗 Redis bağlantısı kuruluyor...');
+  // (LOG REMOVED)
 });
 
 redisClient.on('ready', () => {
-  console.log('✅ Redis bağlantısı başarılı ve hazır!');
+  // (LOG REMOVED)
 });
 
 redisClient.on('end', () => {
-  console.log('🔌 Redis bağlantısı sonlandırıldı');
+  // (LOG REMOVED)
 });
 
 redisClient.on('reconnecting', () => {
-  console.log('🔄 Redis yeniden bağlanmaya çalışıyor...');
+  // (LOG REMOVED)
 });
 
 // Redis bağlantısını başlat

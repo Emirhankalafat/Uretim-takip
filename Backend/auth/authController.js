@@ -59,8 +59,7 @@ const registerCompanyUser = async (req, res) => {
     });
 
     const confirmToken = await createConfirmToken(newUser.id);
-    console.log('Kullanıcı oluşturuldu, confirm token:', confirmToken);
-
+    
     // Email gönder
     const emailSent = await sendConfirmEmail(newUser.Mail, newUser.Name, confirmToken);
     
@@ -88,24 +87,17 @@ const confirmUser = async (req, res) => {
   const { token } = req.query;
 
   try {
-    console.log('Confirm token request:', token);
-    console.log('Token length:', token?.length);
-    console.log('Current time:', new Date());
-
     // Önce token'ı bul
     const record = await prisma.confirmToken.findUnique({
       where: { token },
       include: { user: true },
     });
 
-    console.log('Found record:', record ? 'YES' : 'NO');
-    
     // Eğer token bulunamadıysa, kullanıcının zaten confirm edilmiş olup olmadığını kontrol et
     if (!record) {
       // Token silinmiş olabilir, kullanıcının durumunu kontrol et
       // Bu durumda token'ın hangi kullanıcıya ait olduğunu bilemeyiz
       // Bu yüzden genel bir hata mesajı döneriz
-      console.log('Token not found, checking if this is a duplicate request...');
       
       // Frontend'e redirect ile hata mesajı gönder
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -113,55 +105,42 @@ const confirmUser = async (req, res) => {
     }
 
     if (record) {
-      console.log('Record details:', {
-        id: record.id,
-        user_id: record.user_id,
-        token: record.token,
-        expiresAt: record.expiresAt,
-        createdAt: record.createdAt,
-        isExpired: record.expiresAt < new Date(),
-        userAlreadyConfirmed: record.user.is_confirm
+      // Token süresi dolmuş mu kontrol et
+      if (record.expiresAt < new Date()) {
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        return res.redirect(`${frontendUrl}/confirm?status=error&message=${encodeURIComponent('Geçersiz veya süresi dolmuş token.')}`);
+      }
+
+      // Kullanıcı zaten confirm edilmişse, başarılı response döndür (idempotent)
+      if (record.user.is_confirm) {
+        // Token'ı sil (eğer hala varsa)
+        await prisma.confirmToken.delete({
+          where: { token },
+        }).catch(() => {
+          // Token zaten silinmişse hata verme
+        });
+        
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        return res.redirect(`${frontendUrl}/confirm?status=success&message=${encodeURIComponent('Kullanıcı doğrulandı.')}`);
+      }
+
+      // Kullanıcıyı onayla
+      await prisma.user.update({
+        where: { id: BigInt(record.user_id) },
+        data: { is_confirm: true },
       });
-    }
 
-    // Token süresi dolmuş mu kontrol et
-    if (record.expiresAt < new Date()) {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-      return res.redirect(`${frontendUrl}/confirm?status=error&message=${encodeURIComponent('Geçersiz veya süresi dolmuş token.')}`);
-    }
-
-    // Kullanıcı zaten confirm edilmişse, başarılı response döndür (idempotent)
-    if (record.user.is_confirm) {
-      console.log('User already confirmed, returning success (idempotent)');
-      // Token'ı sil (eğer hala varsa)
+      // Token'ı sil
       await prisma.confirmToken.delete({
         where: { token },
-      }).catch(() => {
-        // Token zaten silinmişse hata verme
-        console.log('Token already deleted');
       });
-      
+
+      // Frontend'e redirect ile başarı mesajı gönder
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-      return res.redirect(`${frontendUrl}/confirm?status=success&message=${encodeURIComponent('Kullanıcı doğrulandı.')}`);
+      res.redirect(`${frontendUrl}/confirm?status=success&message=${encodeURIComponent('Kullanıcı doğrulandı.')}`);
+      
     }
 
-    // Kullanıcıyı onayla
-    await prisma.user.update({
-      where: { id: BigInt(record.user_id) },
-      data: { is_confirm: true },
-    });
-
-    // Token'ı sil
-    await prisma.confirmToken.delete({
-      where: { token },
-    });
-
-    console.log('User confirmed successfully');
-    
-    // Frontend'e redirect ile başarı mesajı gönder
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(`${frontendUrl}/confirm?status=success&message=${encodeURIComponent('Kullanıcı doğrulandı.')}`);
-    
   } catch (error) {
     console.error('Doğrulama hatası:', error);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -316,13 +295,6 @@ const refreshAccessToken = async (req, res) => {
       sameSite: 'strict',
       maxAge: 24 * 60 * 60 * 1000 // 1 gün (milisaniye cinsinden)
     });
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`🔍 Refresh token işlemi tamamlandı - User: ${user.id}`);
-      console.log(`🔍 Yeni CSRF token: ${newCsrfToken.substring(0, 16)}...`);
-    } else {
-      console.log(`Refresh token işlemi tamamlandı - User: ${user.id}`);
-    }
 
     res.status(200).json({
       message: 'Token başarıyla yenilendi.',
@@ -685,8 +657,6 @@ const resetPassword = async (req, res) => {
     // Kullanıcının tüm refresh token'larını geçersiz kıl (güvenlik için)
     await revokeAllUserRefreshTokens(verification.user.id);
 
-    console.log('Password reset successful for user:', verification.user.Mail);
-
     res.status(200).json({
       message: 'Şifreniz başarıyla sıfırlandı. Artık yeni şifrenizle giriş yapabilirsiniz.',
     });
@@ -701,24 +671,22 @@ const resetPassword = async (req, res) => {
 const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log('[adminLogin] Giriş denemesi:', { email, password });
     if (!email || !password) {
-      console.log('[adminLogin] Eksik bilgi:', { email, password });
       return res.status(400).json({ message: 'E-posta ve şifre gereklidir.' });
     }
     // SystemAdmin tablosunda admini bul
     const admin = await prisma.systemAdmin.findUnique({ where: { email } });
-    console.log('[adminLogin] SystemAdmin tablosunda bulunan admin:', admin);
-    if (!admin || !admin.isActive) {
-      console.log('[adminLogin] Admin bulunamadı veya pasif:', { admin });
+    if (!admin) {
       return res.status(401).json({ message: 'Geçersiz e-posta veya şifre.' });
     }
     // Şifre kontrolü
     const isPasswordValid = await bcrypt.compare(password, admin.passwordHash);
-    console.log('[adminLogin] Şifre doğrulama sonucu:', isPasswordValid);
     if (!isPasswordValid) {
-      console.log('[adminLogin] Şifre yanlış:', { email });
       return res.status(401).json({ message: 'Geçersiz e-posta veya şifre.' });
+    }
+    // Sadece aktiflik kontrolü
+    if (!admin.isActive) {
+      return res.status(403).json({ message: 'Hesabınız pasif. Lütfen yöneticinizle iletişime geçin.' });
     }
     // JWT oluştur
     const token = jwt.sign(
@@ -750,6 +718,7 @@ const adminLogin = async (req, res) => {
         id: Number(admin.id),
         email: admin.email,
         name: admin.name || '',
+        isActive: admin.isActive,
         role: 'systemAdmin'
       }
     });
