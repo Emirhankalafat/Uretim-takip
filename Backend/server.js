@@ -54,40 +54,37 @@ app.post('/api/payment/3dsecure/callback', (req, res, next) => {
   PaymentController.handle3DSCallback(req, res);
 });
 
-// CORS ayarları
-if (isProduction) {
-  // Production modda sadece aynı origin'den gelen istekleri kabul et
-  app.use(cors({
-    origin: function (origin, callback) {
-      // Origin yoksa (same-origin requests) veya belirtilen URL'ler ise izin ver
-      const allowedOrigins = [
-        process.env.FRONTEND_URL,
-        'https://üretimgo.com',
-        'https://www.üretimgo.com',
-        'https://xn--retimgo-m2a.com',  // Unicode domain encoding
-        'https://www.xn--retimgo-m2a.com'
-      ].filter(Boolean); // null/undefined değerleri filtrele
-      
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
+// CORS ayarları - CSRF için X-New-CSRF-Token expose edilir
+const corsOptions = {
+  origin: isProduction
+    ? function (origin, callback) {
+        const allowedOrigins = [
+          process.env.FRONTEND_URL,
+          'https://üretimgo.com',
+          'https://www.üretimgo.com',
+          'https://xn--retimgo-m2a.com',
+          'https://www.xn--retimgo-m2a.com'
+        ].filter(Boolean);
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
       }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'CSRF-Token'],
-    optionsSuccessStatus: 200 // IE11 için
-  }));
-} else {
-  // Development modda localhost'tan gelen istekleri kabul et
-  app.use(cors({
-    origin: 'http://localhost:5173', // React app URL'i (Vite default port)
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'CSRF-Token']
-  }));
-}
+    : 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-CSRF-Token',
+    'CSRF-Token',
+    'X-New-CSRF-Token'
+  ],
+  exposedHeaders: ['X-New-CSRF-Token'],
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 
 // Rate limit log fonksiyonu
 function logRateLimit(req, key, message) {

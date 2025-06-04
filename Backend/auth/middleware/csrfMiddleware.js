@@ -29,17 +29,20 @@ const csrfProtection = (req, res, next) => {
 
   // Method kontrolü
   if (exemptMethods.includes(req.method)) {
+    console.log(`[CSRF] Muaf method: ${req.method} ${req.path}`);
     return next();
   }
 
   // Path kontrolü
   if (exemptPaths.includes(req.path)) {
+    console.log(`[CSRF] Muaf endpoint: ${req.method} ${req.path}`);
     return next();
   }
 
   // Kullanıcı veya admin bilgisi var mı kontrol et (auth middleware'den sonra çalışmalı)
   const userId = req.user?.id || req.systemAdmin?.id;
   if (!userId) {
+    console.warn(`[CSRF] Kullanıcı bilgisi yok! ${req.method} ${req.path}`);
     return res.status(401).json({ 
       message: 'Kullanıcı bilgisi bulunamadı. Lütfen giriş yapın.' 
     });
@@ -48,10 +51,8 @@ const csrfProtection = (req, res, next) => {
   // CSRF token'ı header'dan al
   const csrfToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];
 
-  // Development mode debug logs
-  // (DEBUG LOGS REMOVED)
-
   if (!csrfToken) {
+    console.warn(`[CSRF] Token header'da yok! userId: ${userId}, ${req.method} ${req.path}`);
     return res.status(403).json({ 
       message: 'CSRF token bulunamadı. Lütfen sayfayı yenileyin.' 
     });
@@ -60,9 +61,8 @@ const csrfProtection = (req, res, next) => {
   // CSRF token'ı doğrula
   verifyCsrfToken(userId, csrfToken)
     .then(async (isValid) => {
-      // Development mode debug logs
-      // (DEBUG LOGS REMOVED)
       if (!isValid) {
+        console.warn(`[CSRF] Geçersiz token! userId: ${userId}, token: ${csrfToken.substring(0, 16)}..., ${req.method} ${req.path}`);
         return res.status(403).json({ 
           message: 'Geçersiz CSRF token. Lütfen sayfayı yenileyin.' 
         });
@@ -71,20 +71,18 @@ const csrfProtection = (req, res, next) => {
       try {
         const newCsrfToken = await refreshCsrfToken(userId);
         res.setHeader('X-New-CSRF-Token', newCsrfToken);
-        // Development mode debug logs
-        // (DEBUG LOGS REMOVED)
-        // Request'e yeni token'ı ekle (isteğe bağlı)
+        console.log(`[CSRF] Token doğrulandı ve yenilendi! userId: ${userId}, eski: ${csrfToken.substring(0, 16)}..., yeni: ${newCsrfToken.substring(0, 16)}..., ${req.method} ${req.path}`);
         req.newCsrfToken = newCsrfToken;
         next();
       } catch (error) {
-        console.error('CSRF token yenileme hatası:', error);
+        console.error(`[CSRF] Token yenileme hatası! userId: ${userId}, ${req.method} ${req.path}`, error);
         return res.status(500).json({ 
           message: 'CSRF token yenileme hatası.' 
         });
       }
     })
     .catch((error) => {
-      console.error('CSRF token doğrulama hatası:', error);
+      console.error(`[CSRF] Token doğrulama hatası! userId: ${userId}, ${req.method} ${req.path}`, error);
       return res.status(500).json({ 
         message: 'CSRF token doğrulama hatası.' 
       });

@@ -12,6 +12,7 @@ class CSRFTokenManager {
   // Token'ı cookie'ye kaydet
   setToken(token) {
     if (token) {
+      this.clearToken(); // Önce eski tokenı sil
       this.setCookie(this.cookieName, token, 1); // 1 gün
       console.log('🔒 CSRF token cookie\'ye kaydedildi');
     }

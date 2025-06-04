@@ -24,37 +24,49 @@ export const fetchCsrfToken = async () => {
   try {
     const response = await api.get('/auth/csrf-token')
     const token = response.data.csrfToken
+    csrfTokenManager.clearToken(); // Önce eski tokenı sil
     csrfTokenManager.setToken(token)
+    console.log('[CSRF] Yeni token alındı:', token ? token.substring(0, 16) + '...' : 'YOK')
     return token
   } catch (error) {
-    console.error('CSRF token alma hatası:', error)
+    if (error.response?.status === 429) {
+      console.error('[CSRF] Rate limit aşıldı! /auth/csrf-token endpointine çok fazla istek atıldı.')
+    } else {
+      console.error('[CSRF] CSRF token alma hatası:', error)
+    }
     return null
   }
 }
 
+// CSRF işlemleri için istek kuyruğu
+let csrfQueue = Promise.resolve();
+
 // Request interceptor - CSRF token'ı header'a ekle
 api.interceptors.request.use(
-  (config) => {
-    // POST, PUT, DELETE request'lerde CSRF token ekle
+  async (config) => {
     const needsCsrfToken = ['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase())
-    
-    // Auth endpoint'leri CSRF token'dan muaf
     const isAuthEndpoint = config.url?.includes('/auth/login') || 
                           config.url?.includes('/auth/register') ||
                           config.url?.includes('/auth/refresh-token') ||
                           config.url?.includes('/auth/logout') ||
                           config.url?.includes('/auth/confirm')
-    
-    if (needsCsrfToken && !isAuthEndpoint && csrfTokenManager.hasToken()) {
-      const token = csrfTokenManager.getToken()
-      config.headers['X-CSRF-Token'] = token
-      
-      // Development mode debug logs
-      if (import.meta.env.DEV) {
-        console.log(`🔍 Frontend: Sending CSRF token for ${config.method?.toUpperCase()} ${config.url}: ${token ? token.substring(0, 16) + '...' : 'NULL'}`)
-      }
+    if (needsCsrfToken && !isAuthEndpoint) {
+      // Kuyruğa ekle, sırayla token kullan
+      await (csrfQueue = csrfQueue.then(async () => {
+        if (csrfTokenManager.hasToken()) {
+          const token = csrfTokenManager.getToken()
+          config.headers['X-CSRF-Token'] = token
+          csrfTokenManager.clearToken();
+          if (import.meta.env.DEV) {
+            console.log(`[CSRF] Token gönderildi: ${token ? token.substring(0, 16) + '...' : 'YOK'} -> ${config.method?.toUpperCase()} ${config.url}`)
+          }
+        } else {
+          if (import.meta.env.DEV) {
+            console.warn('[CSRF] Token yok, istek gönderiliyor!')
+          }
+        }
+      }))
     }
-    
     return config
   },
   (error) => {
@@ -78,45 +90,48 @@ const processQueue = (error, token = null) => {
   failedQueue = []
 }
 
+// 403 sonrası sonsuz döngüyü engellemek için flag
+let csrfRetrying = false;
+
 // Response interceptor - Refresh token sistemi ve CSRF token güncelleme
 api.interceptors.response.use(
   (response) => {
-    // Response'dan yeni CSRF token'ı al ve güncelle
-    const newToken = csrfTokenManager.updateFromResponse(response);
-    
-    // Development mode debug logs
-    if (import.meta.env.DEV && newToken) {
-      console.log(`🔍 Frontend: New CSRF token received: ${newToken.substring(0, 16)}...`)
+    const newToken = response.headers['x-new-csrf-token'];
+    if (newToken) {
+      csrfTokenManager.clearToken();
+      csrfTokenManager.setToken(newToken);
+      if (import.meta.env.DEV) {
+        console.log(`[CSRF] Yeni token response ile geldi: ${newToken.substring(0, 16)}...`)
+      }
+    } else {
+      csrfTokenManager.updateFromResponse(response);
     }
-    
     return response;
   },
   async (error) => {
     const originalRequest = error.config
-
     // 403 hatası CSRF token sorunu olabilir
     if (error.response?.status === 403 && error.response?.data?.message?.includes('CSRF')) {
-      // Development mode debug logs
-      if (import.meta.env.DEV) {
-        console.log('🔒 CSRF token hatası, yeni token alınıyor...');
-        console.log(`🔍 Failed request: ${originalRequest.method?.toUpperCase()} ${originalRequest.url}`);
-        console.log(`🔍 Error message: ${error.response?.data?.message}`);
-      } else {
-        console.log('🔒 CSRF token hatası, yeni token alınıyor...');
+      if (csrfRetrying) {
+        console.error('[CSRF] 403 sonrası tekrar denendi, sonsuz döngü engellendi!')
+        csrfRetrying = false;
+        return Promise.reject(error);
       }
-      
+      csrfRetrying = true;
+      if (import.meta.env.DEV) {
+        console.log('[CSRF] 403 hatası, yeni token alınacak ve istek tekrar denenecek...');
+      }
       try {
-        // Yeni CSRF token al
         await fetchCsrfToken();
-        
-        // Orijinal isteği tekrar dene
+        csrfRetrying = false;
         return api(originalRequest);
       } catch (csrfError) {
-        console.error('CSRF token yenileme hatası:', csrfError);
+        csrfRetrying = false;
+        console.error('[CSRF] Token yenileme hatası:', csrfError);
         return Promise.reject(error);
       }
     }
-
+    csrfRetrying = false;
     // 401 hatası ve henüz refresh token denenmemişse
     if (error.response?.status === 401 && !originalRequest._retry) {
       // Login endpoint'inde 401 hatası varsa refresh token deneme (yanlış şifre vs.)
