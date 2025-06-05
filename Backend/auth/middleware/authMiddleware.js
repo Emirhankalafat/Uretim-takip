@@ -112,4 +112,36 @@ const authenticateSystemAdmin = async (req, res, next) => {
   }
 };
 
-module.exports = { authenticateToken, authenticateSystemAdmin }; 
+const authenticateApiKey = async (req, res, next) => {
+  try {
+    // Hem header hem body destekle
+    const apiKey = req.headers['x-api-key'] || req.body.api_key;
+    if (!apiKey) {
+      return res.status(401).json({ message: 'API key bulunamadı.' });
+    }
+
+    const company = await prisma.company.findFirst({
+      where: {
+        api_key: apiKey
+      }
+    });
+
+    if (!company) {
+      return res.status(403).json({ message: 'Geçersiz API key' });
+    }
+
+    // Controller tarafında erişmek için
+    req.company = {
+      id: Number(company.id),
+      name: company.Name,
+      package: company.Suspscription_package
+    };
+
+    next();
+  } catch (error) {
+    logger.error('API key auth middleware hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
+module.exports = { authenticateToken, authenticateSystemAdmin, authenticateApiKey }; 

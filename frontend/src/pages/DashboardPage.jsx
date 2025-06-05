@@ -371,6 +371,26 @@ const DashboardPage = () => {
             </button>
           </div>
         )}
+
+        {/* API Key (Sadece SuperAdmin) */}
+        {user?.is_SuperAdmin && profileData?.api_key && (
+          <div className="mb-8 rounded-lg p-4 bg-yellow-50 border border-yellow-200 flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium text-yellow-800 mb-1">Şirket API Anahtarı</div>
+              <div className="font-mono text-yellow-900 break-all select-all text-xs bg-yellow-100 px-2 py-1 rounded">
+                {profileData.api_key}
+              </div>
+            </div>
+            <button
+              className="ml-4 px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-xs font-medium"
+              onClick={() => {
+                navigator.clipboard.writeText(profileData.api_key)
+              }}
+            >
+              Kopyala
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -393,6 +413,26 @@ const DashboardPage = () => {
             </span>
           )}
         </div>
+
+        {/* API Key (Sadece SuperAdmin) */}
+        {user?.is_SuperAdmin && profileData?.api_key && (
+          <div className="mb-8 rounded-lg p-4 bg-yellow-50 border border-yellow-200 flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium text-yellow-800 mb-1">Şirket API Anahtarı</div>
+              <div className="font-mono text-yellow-900 break-all select-all text-xs bg-yellow-100 px-2 py-1 rounded">
+                {profileData.api_key}
+              </div>
+            </div>
+            <button
+              className="ml-4 px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-xs font-medium"
+              onClick={() => {
+                navigator.clipboard.writeText(profileData.api_key)
+              }}
+            >
+              Kopyala
+            </button>
+          </div>
+        )}
 
         {/* Subscription Widget */}
         <SubscriptionWidget />

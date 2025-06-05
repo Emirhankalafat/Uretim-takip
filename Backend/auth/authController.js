@@ -23,6 +23,11 @@ const {
 } = require('./utils/csrfUtils');
 const logger = require('../utils/logger');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+
+function generateApiKey() {
+  return crypto.randomBytes(32).toString('hex');
+}
 
 const registerCompanyUser = async (req, res) => {
   try {
@@ -38,12 +43,14 @@ const registerCompanyUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    const apiKey = generateApiKey();
     const newCompany = await prisma.company.create({
       data: {
         Name: companyName,
         Max_User: 5,
         Suspscription_package: 'trial',
         Sub_end_time: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        api_key: apiKey,
       },
     });
 
@@ -74,6 +81,7 @@ const registerCompanyUser = async (req, res) => {
         name: newUser.Name,
         mail: newUser.Mail,
         company_id: Number(newCompany.id),
+        api_key: apiKey,
       },
       email_sent: emailSent
     });
@@ -443,6 +451,7 @@ const getDashboardProfile = async (req, res) => {
         company_name: user.company.Name,
         created_at: user.created_at,
         is_SuperAdmin: true,
+        api_key: companyStats.api_key,
         company_stats: {
           total_users: totalUsers,
           active_users: activeUsers,

@@ -13,6 +13,7 @@ const orderRoutes = require('./orders/orderRoutes');
 const myJobsRoutes = require('./my-jobs/myJobsRoutes');
 const paymentRoutes = require('./payment/routes');
 const adminRoutes = require('./admin/adminRoutes');
+const mcpRoutes = require('./MCP/mcpRouter');
 const { startTokenCleanupScheduler } = require('./auth/utils/scheduler');
 const { authenticateToken, authenticateSystemAdmin } = require('./auth/middleware/authMiddleware');
 const { csrfProtection } = require('./auth/middleware/csrfMiddleware');
@@ -190,6 +191,7 @@ app.use('/api/product-steps', authenticateToken, csrfProtection, productStepsRou
 app.use('/api/customers', authenticateToken, csrfProtection, customerRoutes);
 app.use('/api/orders', authenticateToken, csrfProtection, orderRoutes);
 app.use('/api/my-jobs', authenticateToken, csrfProtection, myJobsRoutes);
+app.use('/api/mcp', mcpRoutes);
 
 // Admin routes - authentication ve CSRF koruması gerekli
 app.use('/api/admin', authenticateSystemAdmin, adminRoutes);
