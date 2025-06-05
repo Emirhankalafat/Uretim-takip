@@ -96,15 +96,15 @@ const HomePage = () => {
           <div className="text-center">
             <h1 className="text-5xl md:text-7xl font-bold mb-6">
               <span className="bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent">
-                Üretim Süreçlerinizi
+                Türkiye'nin İlk
               </span>
               <span className="block bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Dijitalleştirin
+                MCP Destekli Üretim Takip Sistemi
               </span>
             </h1>
             <p className="text-xl text-purple-100 mb-8 max-w-3xl mx-auto leading-relaxed">
-              Modern üretim takip sistemi ile üretim süreçlerinizi yönetin, 
-              verimliliği artırın ve maliyetleri optimize edin.
+              Model Context Protocol (MCP) teknolojisi ile üretim süreçlerinizi 
+              dijitalleştirin, verimliliği artırın ve geleceğin fabrikasını bugünden kurun.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -144,11 +144,11 @@ const HomePage = () => {
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
               <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Sistem Özellikleri
+                MCP Teknolojisi ile Güçlü Özellikler
               </span>
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Üretim süreçlerinizi yönetmek için ihtiyacınız olan tüm araçlar
+              Model Context Protocol teknolojisi ile üretim süreçlerinizi yönetmek için ihtiyacınız olan tüm araçlar
             </p>
           </div>
           
@@ -177,11 +177,12 @@ const HomePage = () => {
             <h3 className="text-3xl font-bold mb-4">
               <SparklesIcon className="h-8 w-8 inline mr-2 text-purple-400" />
               <span className="bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
-                Üretim Takip Sistemi
+                Türkiye'nin İlk MCP Destekli Üretim Takip Sistemi
               </span>
             </h3>
             <p className="text-purple-200 mb-8 max-w-2xl mx-auto">
-              Üretim süreçlerinizi dijitalleştirin, verimliliği artırın ve geleceğin fabrikasını bugünden kurun.
+              Model Context Protocol teknolojisi ile üretim süreçlerinizi dijitalleştirin, 
+              verimliliği artırın ve geleceğin fabrikasını bugünden kurun.
             </p>
             <div className="flex justify-center space-x-8 mb-8">
               {userLoggedIn ? (
@@ -201,7 +202,7 @@ const HomePage = () => {
             </div>
             <div className="border-t border-purple-800 pt-8">
               <p className="text-purple-300 text-sm">
-                © 2024 Üretim Takip Sistemi. Tüm hakları saklıdır.
+                © 2024 Türkiye'nin İlk MCP Destekli Üretim Takip Sistemi. Tüm hakları saklıdır.
               </p>
             </div>
           </div>
