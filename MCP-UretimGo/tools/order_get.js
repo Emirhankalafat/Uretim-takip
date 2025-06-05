@@ -2,7 +2,7 @@ import fetch from "node-fetch";
 
 export default {
   name: "order_list",
-  description: "Şirkete ait tüm siparişleri listeler.",
+  description: "Kullanıcının siparişlerini backend üzerinden listeler (JSON olarak).",
   inputSchema: {
     type: "object",
     properties: {}
@@ -21,21 +21,28 @@ export default {
 
       const data = await response.json();
 
-      // ✅ Claude için zorunlu yapı
-      return {
-        content: [
-          {
-            type: "text",
-            text: "```json\n" + JSON.stringify(data, null, 2) + "\n```"
-          }
-        ]
-      };
+      if (!Array.isArray(data.orders) || data.orders.length === 0) {
+        return {
+          content: [
+            { type: "text", text: "📭 Hiç sipariş bulunamadı." }
+          ]
+        };
+      }
 
+      // JSON veriyi markdown içinde döndür
+      const text = "```json\n" + JSON.stringify(data, null, 2) + "\n```";
+
+      console.error("📦 [ORDER_LIST] Cevap:", JSON.stringify(data, null, 2));
+
+      return {
+        content: [{ type: "text", text }]
+      };
     } catch (error) {
+      console.error("❌ [ORDER_LIST] Hata:", error);
       return {
         error: {
           code: -32000,
-          message: "Siparişler alınırken hata oluştu.",
+          message: "Siparişler getirilirken hata oluştu",
           data: error.message
         }
       };
