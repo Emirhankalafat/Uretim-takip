@@ -35,7 +35,12 @@ const getOrders = async (req, res) => {
       } : null
     }));
 
-    res.json({ orders: formatted });
+    res.setHeader('Content-Type', 'application/json');
+    res.send(
+      JSON.stringify({ orders: formatted }, (key, value) =>
+        typeof value === 'bigint' ? value.toString() : value
+      )
+    );
   } catch (error) {
     console.error("Siparişleri getirme hatası:", error);
     res.status(500).json({ error: "Sunucu hatası.", details: error.message });
