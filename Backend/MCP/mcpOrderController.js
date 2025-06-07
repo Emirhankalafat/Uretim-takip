@@ -1,86 +1,143 @@
-const fetch = require("node-fetch");
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 
+// Siparişleri getir
 const getOrders = async (req, res) => {
   try {
-    const apiKey = req.company?.api_key;
-    if (!apiKey) {
-      return res.status(400).json({ error: "API key eksik." });
+    const { api_key } = req.body;
+
+    if (!api_key) {
+      return res.status(400).json({ error: "API key zorunludur." });
     }
 
-    const response = await fetch("https://uretimgo.com/api/mcp/orders/list", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ api_key: apiKey })
+    const company = await prisma.company.findFirst({
+      where: { api_key }
     });
 
-    const data = await response.json();
-    return res.json(data);
+    if (!company) {
+      return res.status(403).json({ error: "Geçersiz API key." });
+    }
 
+    const orders = await prisma.orders.findMany({
+      where: { Company_id: company.id },
+      include: { customer: true },
+      orderBy: { created_at: "desc" }
+    });
+
+    const formatted = orders.map(order => ({
+      ...order,
+      id: order.id.toString(),
+      Company_id: order.Company_id?.toString(),
+      Customer_id: order.Customer_id?.toString(),
+      customer: order.customer ? {
+        ...order.customer,
+        id: order.customer.id?.toString()
+      } : null
+    }));
+
+    res.json({ orders: formatted });
   } catch (error) {
-    return res.status(500).json({
-      error: "Siparişler alınırken hata oluştu.",
-      details: error.message
-    });
+    console.error("Siparişleri getirme hatası:", error);
+    res.status(500).json({ error: "Sunucu hatası.", details: error.message });
   }
 };
 
+// Tek siparişi getir
 const getOrderById = async (req, res) => {
   try {
-    const { orderId } = req.body;
-    const apiKey = req.company?.api_key;
-    
-    if (!apiKey) {
-      return res.status(400).json({ error: "API key eksik." });
-    }
-    
-    if (!orderId) {
-      return res.status(400).json({ error: "Sipariş ID'si gerekli." });
+    const { api_key, order_id } = req.body;
+
+    if (!api_key || !order_id) {
+      return res.status(400).json({ error: "api_key ve order_id zorunludur." });
     }
 
-    const response = await fetch("https://uretimgo.com/api/mcp/orders/get", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ api_key: apiKey, order_id: orderId })
+    const company = await prisma.company.findFirst({
+      where: { api_key }
     });
 
-    const data = await response.json();
-    return res.json(data);
+    if (!company) {
+      return res.status(403).json({ error: "Geçersiz API key." });
+    }
 
+    const order = await prisma.orders.findFirst({
+      where: {
+        id: BigInt(order_id),
+        Company_id: company.id
+      },
+      include: {
+        customer: true,
+        orderSteps: true
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: "Sipariş bulunamadı." });
+    }
+
+    res.json({
+      order: {
+        ...order,
+        id: order.id.toString(),
+        Customer_id: order.Customer_id?.toString(),
+        Company_id: order.Company_id?.toString(),
+        customer: order.customer ? {
+          ...order.customer,
+          id: order.customer.id?.toString()
+        } : null,
+        orderSteps: order.orderSteps.map(step => ({
+          ...step,
+          id: step.id.toString(),
+          Order_id: step.Order_id?.toString(),
+          Product_id: step.Product_id?.toString()
+        }))
+      }
+    });
   } catch (error) {
-    return res.status(500).json({
-      error: "Sipariş detayları alınırken hata oluştu.",
-      details: error.message
-    });
+    console.error("Sipariş detay hatası:", error);
+    res.status(500).json({ error: "Sunucu hatası.", details: error.message });
   }
 };
 
+// Sipariş oluştur
 const createOrder = async (req, res) => {
   try {
-    const orderData = req.body;
-    const apiKey = req.company?.api_key;
-    
-    if (!apiKey) {
-      return res.status(400).json({ error: "API key eksik." });
-    }
-    
-    if (!orderData) {
-      return res.status(400).json({ error: "Sipariş verileri gerekli." });
+    const { api_key, Customer_id, order_number, priority = "NORMAL", deadline, notes = "", is_stock = false } = req.body;
+
+    if (!api_key || !order_number) {
+      return res.status(400).json({ error: "api_key ve order_number zorunludur." });
     }
 
-    const response = await fetch("https://uretimgo.com/api/mcp/orders/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ api_key: apiKey, ...orderData })
+    const company = await prisma.company.findFirst({
+      where: { api_key }
     });
 
-    const data = await response.json();
-    return res.json(data);
+    if (!company) {
+      return res.status(403).json({ error: "Geçersiz API key." });
+    }
 
+    const newOrder = await prisma.orders.create({
+      data: {
+        Company_id: company.id,
+        Customer_id: Customer_id ? BigInt(Customer_id) : null,
+        order_number,
+        priority,
+        deadline: deadline ? new Date(deadline) : null,
+        notes,
+        is_stock
+      }
+    });
+
+    res.json({
+      order: {
+        ...newOrder,
+        id: newOrder.id.toString(),
+        Company_id: newOrder.Company_id?.toString(),
+        Customer_id: newOrder.Customer_id?.toString()
+      }
+    });
   } catch (error) {
-    return res.status(500).json({
-      error: "Sipariş oluşturulurken hata oluştu.",
-      details: error.message
-    });
+    console.error("Sipariş oluşturma hatası:", error);
+    res.status(500).json({ error: "Sunucu hatası.", details: error.message });
   }
 };
 
