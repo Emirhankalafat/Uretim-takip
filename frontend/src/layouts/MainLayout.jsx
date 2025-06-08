@@ -1,30 +1,31 @@
-import { useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { logout } from '../features/auth/authSlice'
-import authService from '../features/auth/services/authService'
-import usePermissions from '../hooks/usePermissions'
+import { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { logout } from '../features/auth/authSlice';
+import authService from '../features/auth/services/authService';
+import usePermissions from '../hooks/usePermissions';
+import NotificationIcon from '../features/notifications/components/NotificationIcon';
+import NotificationDropdown from '../features/notifications/components/NotificationDropdown';
 
 const MainLayout = ({ children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { user } = useSelector((state) => state.auth)
-  const { hasPermission } = usePermissions()
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useSelector((state) => state.auth);
+  const { hasPermission } = usePermissions();
 
   const handleLogout = async () => {
     try {
-      // Backend'e logout isteği gönder (cookie'yi temizlemek için)
-      await authService.logout()
+      await authService.logout();
     } catch (error) {
-      console.error('Logout hatası:', error)
+      console.error('Logout hatası:', error);
     } finally {
-      // Her durumda Redux state'i temizle ve login'e yönlendir
-      dispatch(logout())
-      navigate('/login')
+      dispatch(logout());
+      navigate('/login');
     }
-  }
+  };
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: '🏠', gradient: 'from-primary-500 to-primary-600' },
@@ -92,9 +93,9 @@ const MainLayout = ({ children }) => {
       requirePermission: 'REPORT_READ',
       gradient: 'from-pink-500 to-pink-600'
     },
-  ]
+  ];
 
-  const isActive = (href) => location.pathname === href
+  const isActive = (href) => location.pathname === href;
 
   return (
     <div className="h-screen flex overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100">
@@ -125,9 +126,8 @@ const MainLayout = ({ children }) => {
               </div>
               <nav className="px-4 space-y-2">
                 {navigation.map((item) => {
-                  // Yetki kontrolü - AYNEN KORUNDU
-                  if (item.requireSuperAdmin && !user?.is_SuperAdmin) return null
-                  if (item.requirePermission && !user?.is_SuperAdmin && !hasPermission(item.requirePermission)) return null
+                  if (item.requireSuperAdmin && !user?.is_SuperAdmin) return null;
+                  if (item.requirePermission && !user?.is_SuperAdmin && !hasPermission(item.requirePermission)) return null;
                   
                   return (
                     <Link
@@ -148,7 +148,7 @@ const MainLayout = ({ children }) => {
                         <div className="w-2 h-2 bg-primary-500 rounded-full animate-pulse"></div>
                       )}
                     </Link>
-                  )
+                  );
                 })}
               </nav>
             </div>
@@ -175,9 +175,8 @@ const MainLayout = ({ children }) => {
             </div>
             <nav className="flex-1 px-4 space-y-2">
               {navigation.map((item) => {
-                // Yetki kontrolü - AYNEN KORUNDU
-                if (item.requireSuperAdmin && !user?.is_SuperAdmin) return null
-                if (item.requirePermission && !user?.is_SuperAdmin && !hasPermission(item.requirePermission)) return null
+                if (item.requireSuperAdmin && !user?.is_SuperAdmin) return null;
+                if (item.requirePermission && !user?.is_SuperAdmin && !hasPermission(item.requirePermission)) return null;
                 
                 return (
                   <Link
@@ -197,23 +196,23 @@ const MainLayout = ({ children }) => {
                       <div className="w-2 h-2 bg-primary-500 rounded-full animate-pulse"></div>
                     )}
                   </Link>
-                )
+                );
               })}
             </nav>
             
-            {/* User info section */}
+            {/* User info section in sidebar */}
             <div className="px-4 mt-6">
               <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 shadow-soft">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold shadow-medium">
-                    {user?.Name?.charAt(0)?.toUpperCase() || 'U'}
+                    {user?.Name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">
-                      {user?.Name || 'Kullanıcı'}
+                      {user?.Name || user?.email || 'Kullanıcı'}
                     </p>
                     <p className="text-xs text-gray-500 truncate">
-                      {user?.Mail || 'email@example.com'}
+                      {user?.Mail || user?.email}
                     </p>
                     {user?.is_SuperAdmin && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-danger-100 to-danger-200 text-danger-800 border border-danger-300 mt-1">
@@ -222,43 +221,58 @@ const MainLayout = ({ children }) => {
                     )}
                   </div>
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="mt-3 w-full btn-modern bg-gradient-to-r from-gray-600 to-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-gray-700 hover:to-gray-800 shadow-soft"
-                >
-                  Çıkış Yap
-                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="md:pl-72 flex flex-col flex-1">
-        {/* Mobile header */}
-        <div className="md:hidden bg-white shadow-soft border-b border-gray-200 px-4 py-3">
-          <div className="flex items-center justify-between">
-            <button
-              className="text-gray-500 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 p-2 rounded-lg"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <span className="sr-only">Open sidebar</span>
-              <span className="text-xl">☰</span>
-            </button>
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm font-bold">🏭</span>
+      {/* Main content area */}
+      <div className="md:pl-72 flex flex-col flex-1 overflow-hidden">
+        <header className="sticky top-0 z-30 flex h-16 w-full flex-shrink-0 items-center justify-between border-b border-gray-200 bg-white shadow-sm px-4 sm:px-6 lg:px-8">
+          {/* Mobile sidebar open button */}
+          <button
+            type="button"
+            className="rounded-md px-3 py-2 text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 md:hidden hover:bg-gray-100 hover:text-gray-700"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <span className="sr-only">Open sidebar</span>
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </button>
+
+          {/* Spacer to push right items to the right */}
+          <div className="flex-1" />
+
+          <div className="flex items-center gap-x-3 sm:gap-x-4 md:gap-x-6">
+            <div className="relative">
+              <NotificationIcon onClick={() => setIsNotificationDropdownOpen(prev => !prev)} />
+              {isNotificationDropdownOpen && (
+                <NotificationDropdown isOpen={isNotificationDropdownOpen} onClose={() => setIsNotificationDropdownOpen(false)} />
+              )}
+            </div>
+
+            {/* User profile and logout */}
+            {user && (
+              <div className="flex items-center">
+                <span className="hidden sm:inline-block text-sm font-medium text-gray-700 mr-2 sm:mr-3">
+                  {user.Name || user.email || 'Kullanıcı'}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  title="Çıkış Yap"
+                  className="p-1.5 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1"
+                >
+                  <span className="sr-only">Çıkış Yap</span>
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                  </svg>
+                </button>
               </div>
-              <h1 className="text-lg font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
-                Üretim Takip
-              </h1>
-            </div>
-            <div className="w-10 h-10 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-medium">
-              {user?.Name?.charAt(0)?.toUpperCase() || 'U'}
-            </div>
+            )}
           </div>
-        </div>
+        </header>
 
         {/* Page content */}
         <main className="flex-1 relative overflow-y-auto focus:outline-none">
@@ -272,7 +286,7 @@ const MainLayout = ({ children }) => {
         </main>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default MainLayout 
+export default MainLayout; 

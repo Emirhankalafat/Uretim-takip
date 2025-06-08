@@ -289,6 +289,7 @@ const MyJobsPage = () => {
                               <div className="flex items-center text-xs text-gray-600">
                                 <span className="w-4 h-4 mr-1">📦</span>
                                 <span>{job.product?.name || "Bilinmiyor"}</span>
+
                               </div>
                             </div>
                             <div className="text-xs text-gray-500">
@@ -335,7 +336,10 @@ const MyJobsPage = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ürün</label>
-                  <p className="text-gray-900">{selectedJob.product?.name || "Bilinmiyor"}</p>
+                  <div className="flex items-center space-x-2">
+                    <p className="text-gray-900">{selectedJob.product?.name || "Bilinmiyor"}</p>
+
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Adım Sırası</label>

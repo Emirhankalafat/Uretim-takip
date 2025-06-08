@@ -2,6 +2,18 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum NotificationType {
+  INFO
+  WARNING
+  ERROR
+  SUCCESS
+  NEW_ORDER
+  ORDER_STATUS_UPDATE
+  TASK_ASSIGNED
+  STOCK_ALERT
+  GENERAL
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -45,6 +57,7 @@ model User {
   userCards           UserCard[]
   company             Company              @relation(fields: [company_id], references: [id])
   permissions         Users_Permissions[]
+  notifications       Notification[]
 
   @@map("users")
 }
@@ -134,6 +147,7 @@ model Products {
   Category_id BigInt
   Company_id  BigInt
   orderSteps  OrderSteps[]
+  orderItems  OrderItems[]
   steps       ProductSteps[]
   category    Categories     @relation(fields: [Category_id], references: [id])
   company     Company        @relation(fields: [Company_id], references: [id])
@@ -181,6 +195,7 @@ model Orders {
   updated_at   DateTime     @updatedAt
   is_stock     Boolean      @default(false)
   orderSteps   OrderSteps[]
+  orderItems   OrderItems[]
   company      Company      @relation(fields: [Company_id], references: [id])
   customer     Customers?   @relation(fields: [Customer_id], references: [id])
 
@@ -207,6 +222,20 @@ model OrderSteps {
 
   @@unique([Order_id, Product_id, step_number])
   @@map("order_steps")
+}
+
+model OrderItems {
+  id         BigInt   @id @default(autoincrement())
+  Order_id   BigInt
+  Product_id BigInt
+  quantity   Int      @default(1)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  order      Orders   @relation(fields: [Order_id], references: [id], onDelete: Cascade)
+  product    Products @relation(fields: [Product_id], references: [id])
+
+  @@unique([Order_id, Product_id])
+  @@map("order_items")
 }
 
 model UserCard {
@@ -241,6 +270,21 @@ model PaymentLog {
   user            User     @relation(fields: [user_id], references: [id])
 
   @@map("payment_logs")
+}
+
+model Notification {
+  id        BigInt      @id @default(autoincrement())
+  userId    BigInt
+  message   String
+  type      NotificationType @default(GENERAL)
+  isRead    Boolean     @default(false)
+  linkTo    String?     // Opsiyonel: Bildirime tıklandığında yönlendirilecek link (örn: /dashboard/orders/123)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
 }
 
 model SystemAdmin {

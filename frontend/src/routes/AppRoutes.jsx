@@ -29,6 +29,9 @@ const OrdersPage = lazy(() => import('../features/orders/pages/OrdersPage'))
 const OrderDetailPage = lazy(() => import('../features/orders/pages/OrderDetailPage'))
 const MyJobsPage = lazy(() => import('../features/my-jobs/pages/MyJobsPage'))
 
+// Notification Pages
+const NotificationsPage = lazy(() => import('../features/notifications/pages/NotificationsPage'))
+
 // Payment Pages
 const CheckoutFormPage = lazy(() => import('../features/payment/pages/CheckoutFormPage'))
 const PaymentSuccessPage = lazy(() => import('../features/payment/pages/PaymentSuccessPage'))
@@ -359,6 +362,16 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <MyJobsPage />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Notifications Route */}
+      <Route 
+        path="/notifications" 
+        element={
+          <ProtectedRoute>
+            <NotificationsPage />
           </ProtectedRoute>
         } 
       />

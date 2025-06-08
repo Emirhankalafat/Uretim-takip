@@ -56,13 +56,19 @@ api.interceptors.request.use(
         if (csrfTokenManager.hasToken()) {
           const token = csrfTokenManager.getToken()
           config.headers['X-CSRF-Token'] = token
-          csrfTokenManager.clearToken();
+          // Token'ı silme - response'da yenisi gelecek
           if (import.meta.env.DEV) {
             console.log(`[CSRF] Token gönderildi: ${token ? token.substring(0, 16) + '...' : 'YOK'} -> ${config.method?.toUpperCase()} ${config.url}`)
           }
         } else {
-          if (import.meta.env.DEV) {
-            console.warn('[CSRF] Token yok, istek gönderiliyor!')
+          // Token yoksa yeni token al
+          console.warn('[CSRF] Token yok, yeni token alınıyor...')
+          const newToken = await fetchCsrfToken()
+          if (newToken) {
+            config.headers['X-CSRF-Token'] = newToken
+            if (import.meta.env.DEV) {
+              console.log(`[CSRF] Yeni token alındı ve gönderildi: ${newToken.substring(0, 16)}... -> ${config.method?.toUpperCase()} ${config.url}`)
+            }
           }
         }
       }))
@@ -98,13 +104,10 @@ api.interceptors.response.use(
   (response) => {
     const newToken = response.headers['x-new-csrf-token'];
     if (newToken) {
-      csrfTokenManager.clearToken();
       csrfTokenManager.setToken(newToken);
       if (import.meta.env.DEV) {
         console.log(`[CSRF] Yeni token response ile geldi: ${newToken.substring(0, 16)}...`)
       }
-    } else {
-      csrfTokenManager.updateFromResponse(response);
     }
     return response;
   },

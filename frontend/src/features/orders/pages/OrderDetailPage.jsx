@@ -479,6 +479,17 @@ const OrderDetailPage = () => {
                         <div className="flex items-center">
                           <span className="text-xl mr-2">📦</span>
                           <h4 className="font-semibold text-gray-900">{productData.product.name}</h4>
+                          {(() => {
+                            // Bu ürün için order item'dan quantity bilgisini al
+                            const orderItem = order.orderItems?.find(item => 
+                              item.Product_id === productData.product.id
+                            );
+                            return orderItem?.quantity && (
+                              <span className="ml-2 px-2 py-1 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">
+                                {orderItem.quantity} adet
+                              </span>
+                            );
+                          })()}
                         </div>
                         <div className="text-sm text-gray-600">
                           {productData.steps.filter(step => step.status === 'COMPLETED').length} / {productData.steps.length} tamamlandı

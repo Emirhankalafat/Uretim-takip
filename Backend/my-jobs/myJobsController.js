@@ -101,6 +101,7 @@ const getMyJobs = async (req, res) => {
           Order_id: step.Order_id.toString(),
           Product_id: step.Product_id.toString(),
           assigned_user: step.assigned_user.toString(),
+
           isMyTurn,
           previousStepsCompleted: allPreviousCompleted,
           order: step.order ? {
@@ -127,6 +128,7 @@ const getMyJobs = async (req, res) => {
       Order_id: step.Order_id.toString(),
       Product_id: step.Product_id.toString(),
       assigned_user: step.assigned_user.toString(),
+      
       isMyTurn: true, // Tamamlanan işler için her zaman true
       previousStepsCompleted: true,
       order: step.order ? {
@@ -233,6 +235,7 @@ const getMyJobDetail = async (req, res) => {
       Order_id: jobDetail.Order_id?.toString(),
       Product_id: jobDetail.Product_id?.toString(),
       assigned_user: jobDetail.assigned_user?.toString(),
+
       isMyTurn: allPreviousCompleted,
       order: jobDetail.order ? {
         ...jobDetail.order,

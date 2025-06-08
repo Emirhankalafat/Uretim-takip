@@ -26,6 +26,7 @@ const rateLimit = require('express-rate-limit');
 const { RedisStore } = require('rate-limit-redis');
 const { redisClient } = require('./config/redis');
 const reportRoutes = require('./reports/reportRoutes');
+const notificationRoutes = require('./notifications/notification.routes');
 require('dotenv').config();
 
 // Production modunu kontrol et
@@ -95,7 +96,7 @@ function logRateLimit(req, key, message) {
 // Rate limit middleware (Redis tabanlı)
 const authRateLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 dakika
-  max: 20, // 5 dakikada 20 istek
+  max: 50, // 5 dakikada 50 istek (daha fazla)
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -192,6 +193,7 @@ app.use('/api/customers', authenticateToken, csrfProtection, customerRoutes);
 app.use('/api/orders', authenticateToken, csrfProtection, orderRoutes);
 app.use('/api/my-jobs', authenticateToken, csrfProtection, myJobsRoutes);
 app.use('/api/mcp', mcpRoutes);
+app.use('/api/notifications', authenticateToken, csrfProtection, notificationRoutes);
 
 // Admin routes - authentication ve CSRF koruması gerekli
 app.use('/api/admin', authenticateSystemAdmin, adminRoutes);

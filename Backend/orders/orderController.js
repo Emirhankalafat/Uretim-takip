@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const notificationService = require('../notifications/notification.service');
 const prisma = new PrismaClient();
 
 // Sipariş oluşturma
@@ -6,6 +7,7 @@ const createOrder = async (req, res) => {
   try {
     const { Customer_id, priority, deadline, notes, products, is_stock } = req.body;
     const company_id = req.user.company_id;
+    let customerName = null;
 
     // Sadece stok siparişi değilse müşteri kontrolü yap
     if (!is_stock) {
@@ -21,6 +23,7 @@ const createOrder = async (req, res) => {
       if (!customer) {
         return res.status(404).json({ message: 'Müşteri bulunamadı.' });
       }
+      customerName = customer.Name; // Bildirim için müşteri adını sakla
     }
 
     // Otomatik sipariş numarası oluştur
@@ -63,7 +66,10 @@ const createOrder = async (req, res) => {
         }
       });
 
-      // Her product için step'leri oluştur
+      // Assigned user'ları toplamak için
+      const assignedUserIds = [];
+
+      // Her product için order item ve step'leri oluştur
       if (products && products.length > 0) {
         for (const productData of products) {
           const { product_id, quantity = 1, customSteps } = productData;
@@ -80,10 +86,24 @@ const createOrder = async (req, res) => {
             throw new Error(`Ürün bulunamadı: ${product_id}`);
           }
 
+          // Order Item oluştur (quantity burada saklanacak)
+          await tx.orderItems.create({
+            data: {
+              Order_id: order.id,
+              Product_id: BigInt(product_id),
+              quantity: quantity || 1
+            }
+          });
+
           // Eğer customSteps varsa onları kullan, yoksa ProductSteps'ten şablon al
           if (customSteps && customSteps.length > 0) {
             // Manuel olarak düzenlenmiş step'leri kullan
             for (const customStep of customSteps) {
+              // Assigned user kontrolü
+              if (!customStep.assigned_user) {
+                throw new Error(`${customStep.step_name} adımında sorumlu kullanıcı seçilmedi. Tüm adımlar için sorumlu kullanıcı seçilmelidir.`);
+              }
+
               await tx.orderSteps.create({
                 data: {
                   Order_id: order.id,
@@ -91,10 +111,13 @@ const createOrder = async (req, res) => {
                   step_name: customStep.step_name,
                   step_description: customStep.step_description || null,
                   step_number: customStep.step_number,
-                  assigned_user: customStep.assigned_user ? BigInt(customStep.assigned_user) : null,
+                  assigned_user: BigInt(customStep.assigned_user),
                   status: 'WAITING'
                 }
               });
+
+              // Assigned user'ı listeye ekle
+              assignedUserIds.push(customStep.assigned_user);
             }
           } else {
             // ProductSteps'ten şablon olarak al
@@ -105,6 +128,11 @@ const createOrder = async (req, res) => {
 
             // Her step için order step oluştur (şablon olarak)
             for (const step of productSteps) {
+              // ProductSteps'ten gelen step'lerde Responsible_User kontrolü
+              if (!step.Responsible_User) {
+                throw new Error(`${step.Name} adımında sorumlu kullanıcı tanımlanmamış. Lütfen ürün adımlarını kontrol edin.`);
+              }
+
               await tx.orderSteps.create({
                 data: {
                   Order_id: order.id,
@@ -116,21 +144,55 @@ const createOrder = async (req, res) => {
                   status: 'WAITING'
                 }
               });
+
+              // Assigned user'ı listeye ekle
+              assignedUserIds.push(step.Responsible_User.toString());
             }
           }
         }
       }
 
-      return order;
+      // En az bir assigned user olmalı
+      if (assignedUserIds.length === 0) {
+        throw new Error('Sipariş oluşturmak için en az bir adımda sorumlu kullanıcı seçilmelidir.');
+      }
+
+      return { order, assignedUserIds };
     });
+
+    // Sipariş başarıyla oluşturulduktan sonra bildirim gönder
+    try {
+      // 1. Yöneticilere sipariş oluşturuldu bildirimi
+      const managementNotifications = await notificationService.notifyOrderResponsibles({
+        orderId: result.order.id,
+        orderNumber: orderNumber,
+        customerName: customerName,
+        companyId: BigInt(company_id),
+        isStock: is_stock || false
+      });
+      
+      // 2. Sorumlu kullanıcılara iş atandı bildirimi
+      const assignedNotifications = await notificationService.notifyAssignedUsers({
+        orderId: result.order.id,
+        orderNumber: orderNumber,
+        assignedUserIds: result.assignedUserIds,
+        customerName: customerName,
+        isStock: is_stock || false
+      });
+      
+      console.log(`Order ${orderNumber} created successfully. Management notifications: ${managementNotifications}, Task notifications: ${assignedNotifications}.`);
+    } catch (notificationError) {
+      // Bildirim hatası sipariş oluşturmayı engellemez, sadece log'la
+      console.error('Failed to send order notifications:', notificationError);
+    }
 
     res.status(201).json({
       message: 'Sipariş başarıyla oluşturuldu.',
       order: {
-        ...result,
-        id: result.id.toString(),
-        Customer_id: result.Customer_id ? result.Customer_id.toString() : null,
-        Company_id: result.Company_id.toString()
+        ...result.order,
+        id: result.order.id.toString(),
+        Customer_id: result.order.Customer_id ? result.order.Customer_id.toString() : null,
+        Company_id: result.order.Company_id.toString()
       }
     });
   } catch (error) {
@@ -277,6 +339,13 @@ const getOrders = async (req, res) => {
         customer: {
           select: { id: true, Name: true }
         },
+        orderItems: {
+          include: {
+            product: {
+              select: { id: true, name: true }
+            }
+          }
+        },
         orderSteps: {
           include: {
             product: {
@@ -307,6 +376,16 @@ const getOrders = async (req, res) => {
         ...order.customer,
         id: order.customer?.id ? order.customer.id.toString() : null
       },
+      orderItems: order.orderItems.map(item => ({
+        ...item,
+        id: item.id.toString(),
+        Order_id: item.Order_id.toString(),
+        Product_id: item.Product_id.toString(),
+        product: {
+          ...item.product,
+          id: item.product.id.toString()
+        }
+      })),
       orderSteps: order.orderSteps.map(step => ({
         ...step,
         id: step.id.toString(),
@@ -353,6 +432,13 @@ const getOrderById = async (req, res) => {
       },
       include: {
         customer: true,
+        orderItems: {
+          include: {
+            product: {
+              select: { id: true, name: true, description: true }
+            }
+          }
+        },
         orderSteps: {
           include: {
             product: {
@@ -384,6 +470,16 @@ const getOrderById = async (req, res) => {
         id: order.customer?.id ? order.customer.id.toString() : null,
         Company_Id: order.customer?.Company_Id ? order.customer.Company_Id.toString() : null
       },
+      orderItems: order.orderItems.map(item => ({
+        ...item,
+        id: item.id.toString(),
+        Order_id: item.Order_id.toString(),
+        Product_id: item.Product_id.toString(),
+        product: {
+          ...item.product,
+          id: item.product.id.toString()
+        }
+      })),
       orderSteps: order.orderSteps.map(step => ({
         ...step,
         id: step.id.toString(),
@@ -424,6 +520,11 @@ const updateOrder = async (req, res) => {
       where: {
         id: BigInt(id),
         Company_id: BigInt(company_id)
+      },
+      include: {
+        customer: {
+          select: { Name: true }
+        }
       }
     });
 
@@ -432,6 +533,7 @@ const updateOrder = async (req, res) => {
     }
 
     // Müşteri kontrolü (eğer değiştirilecekse)
+    let customerName = existingOrder.customer?.Name || null;
     if (Customer_id) {
       const customer = await prisma.customers.findFirst({
         where: {
@@ -443,6 +545,7 @@ const updateOrder = async (req, res) => {
       if (!customer) {
         return res.status(404).json({ message: 'Müşteri bulunamadı.' });
       }
+      customerName = customer.Name;
     }
 
     const updatedOrder = await prisma.orders.update({
@@ -457,6 +560,25 @@ const updateOrder = async (req, res) => {
         updated_at: new Date()
       }
     });
+
+    // Durum değişikliği varsa bildirim gönder
+    if (status && status !== existingOrder.status) {
+      try {
+        const notificationsSent = await notificationService.notifyOrderStatusChange({
+          orderId: BigInt(id),
+          orderNumber: existingOrder.order_number,
+          oldStatus: existingOrder.status,
+          newStatus: status,
+          companyId: BigInt(company_id),
+          customerName: customerName
+        });
+        
+        console.log(`Order ${existingOrder.order_number} status changed from ${existingOrder.status} to ${status}. Notifications sent to ${notificationsSent} users.`);
+      } catch (notificationError) {
+        // Bildirim hatası sipariş güncellemeyi engellemez, sadece log'la
+        console.error('Failed to send order status change notifications:', notificationError);
+      }
+    }
 
     res.json({
       message: 'Sipariş başarıyla güncellendi.',

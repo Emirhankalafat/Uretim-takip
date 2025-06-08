@@ -491,6 +491,9 @@ const OrdersPage = () => {
                     Müşteri
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ürünler
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Durum
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -531,6 +534,21 @@ const OrdersPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{order.customer?.Name}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="space-y-1">
+                        {order.orderItems?.map((item, index) => (
+                          <div key={index} className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-900">{item.product?.name || 'Bilinmeyen Ürün'}</span>
+                            <span className="px-2 py-1 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">
+                              {item.quantity} adet
+                            </span>
+                          </div>
+                        ))}
+                        {(!order.orderItems || order.orderItems.length === 0) && (
+                          <span className="text-sm text-gray-500">Ürün bilgisi yok</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
