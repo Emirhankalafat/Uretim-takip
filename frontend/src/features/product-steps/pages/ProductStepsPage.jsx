@@ -5,6 +5,7 @@ import productService from '../../products/services/productService'
 import userService from '../../users/services/userService'
 import usePermissions from '../../../hooks/usePermissions'
 import Toast from '../../../components/Toast'
+import SubscriptionGuard from '../../../components/SubscriptionGuard'
 
 const ProductStepsPage = () => {
   const [productSteps, setProductSteps] = useState([])
@@ -576,22 +577,26 @@ const ProductStepsPage = () => {
               </div>
               <div className="flex items-center space-x-3">
                 {canCreate && (
-                  <button
-                    onClick={addNewStep}
-                    className="bg-gradient-to-r from-success-500 to-success-600 text-white px-4 py-2 rounded-lg font-medium hover:from-success-600 hover:to-success-700 transition-all duration-300 shadow-medium"
-                  >
-                    <span className="mr-2">➕</span>
-                    Yeni Adım
-                  </button>
+                  <SubscriptionGuard requiresActiveSubscription={true} actionName="Yeni adım ekleme">
+                    <button
+                      onClick={addNewStep}
+                      className="bg-gradient-to-r from-success-500 to-success-600 text-white px-4 py-2 rounded-lg font-medium hover:from-success-600 hover:to-success-700 transition-all duration-300 shadow-medium"
+                    >
+                      <span className="mr-2">➕</span>
+                      Yeni Adım
+                    </button>
+                  </SubscriptionGuard>
                 )}
                 {canUpdate && (
-                  <button
-                    onClick={reorderSteps}
-                    className="bg-gradient-to-r from-info-500 to-info-600 text-white px-4 py-2 rounded-lg font-medium hover:from-info-600 hover:to-info-700 transition-all duration-300 shadow-medium"
-                  >
-                    <span className="mr-2">🔄</span>
-                    Yeniden Sırala
-                  </button>
+                  <SubscriptionGuard requiresActiveSubscription={true} actionName="Adımları yeniden sıralama">
+                    <button
+                      onClick={reorderSteps}
+                      className="bg-gradient-to-r from-info-500 to-info-600 text-white px-4 py-2 rounded-lg font-medium hover:from-info-600 hover:to-info-700 transition-all duration-300 shadow-medium"
+                    >
+                      <span className="mr-2">🔄</span>
+                      Yeniden Sırala
+                    </button>
+                  </SubscriptionGuard>
                 )}
               </div>
             </div>
@@ -621,13 +626,15 @@ const ProductStepsPage = () => {
                   Bu ürün için ilk üretim adımını oluşturarak başlayın.
                 </p>
                 {canCreate && (
-                  <button
-                    onClick={addNewStep}
-                    className="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-primary-600 hover:to-primary-700 transition-all duration-300 shadow-medium hover:shadow-strong transform hover:scale-105"
-                  >
-                    <span className="mr-2">➕</span>
-                    İlk Adımı Oluştur
-                  </button>
+                  <SubscriptionGuard requiresActiveSubscription={true} actionName="İlk adım oluşturma">
+                    <button
+                      onClick={addNewStep}
+                      className="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-primary-600 hover:to-primary-700 transition-all duration-300 shadow-medium hover:shadow-strong transform hover:scale-105"
+                    >
+                      <span className="mr-2">➕</span>
+                      İlk Adımı Oluştur
+                    </button>
+                  </SubscriptionGuard>
                 )}
               </div>
             ) : (
@@ -770,22 +777,26 @@ const ProductStepsPage = () => {
                             {(canUpdate || canDelete) && (
                               <div className="flex items-center space-x-2 ml-4">
                                 {canUpdate && (
-                                  <button
-                                    onClick={() => toggleEdit(step.id)}
-                                    className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-300"
-                                    title="Düzenle"
-                                  >
-                                    ✏️
-                                  </button>
+                                  <SubscriptionGuard requiresActiveSubscription={true} actionName="Adım düzenleme">
+                                    <button
+                                      onClick={() => toggleEdit(step.id)}
+                                      className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-300"
+                                      title="Düzenle"
+                                    >
+                                      ✏️
+                                    </button>
+                                  </SubscriptionGuard>
                                 )}
                                 {canDelete && (
-                                  <button
-                                    onClick={() => deleteStep(step.id)}
-                                    className="p-2 text-gray-400 hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-all duration-300"
-                                    title="Sil"
-                                  >
-                                    🗑️
-                                  </button>
+                                  <SubscriptionGuard requiresActiveSubscription={true} actionName="Adım silme" showTooltip={false}>
+                                    <button
+                                      onClick={() => deleteStep(step.id)}
+                                      className="p-2 text-gray-400 hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-all duration-300"
+                                      title="Sil"
+                                    >
+                                      🗑️
+                                    </button>
+                                  </SubscriptionGuard>
                                 )}
                               </div>
                             )}

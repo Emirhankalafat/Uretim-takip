@@ -204,7 +204,7 @@ const loginUser = async (req, res) => {
       httpOnly: true, // XSS saldırılarına karşı koruma
       secure: process.env.NODE_ENV === 'production', // HTTPS'de secure flag
       sameSite: 'strict', // CSRF saldırılarına karşı koruma
-      maxAge: 15 * 60 * 1000 // 15 dakika (milisaniye cinsinden)
+      maxAge: 15 * 60 * 1000 // 15 dakika
     });
 
     res.cookie('refreshToken', refreshToken, {

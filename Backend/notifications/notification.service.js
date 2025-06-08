@@ -219,8 +219,15 @@ const getNotificationsByUserId = async (userId, page = 1, limit = 10) => {
     prisma.notification.count({ where: { userId } }),
   ]);
 
+  // BigInt'leri Number'a çevir
+  const serializedNotifications = notifications.map(notification => ({
+    ...notification,
+    id: Number(notification.id),
+    userId: Number(notification.userId)
+  }));
+
   return {
-    notifications,
+    notifications: serializedNotifications,
     totalPages: Math.ceil(totalCount / limit),
     currentPage: page,
     totalCount,
@@ -256,10 +263,17 @@ const markNotificationAsRead = async (notificationId, userId) => {
     throw new Error('User does not have permission for this notification.');
   }
 
-  return prisma.notification.update({
+  const updatedNotification = await prisma.notification.update({
     where: { id: notificationId },
     data: { isRead: true },
   });
+  
+  // BigInt'leri Number'a çevir
+  return {
+    ...updatedNotification,
+    id: Number(updatedNotification.id),
+    userId: Number(updatedNotification.userId)
+  };
 };
 
 /**

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useCustomers } from '../hooks/useCustomers'
+import SubscriptionGuard from '../../../components/SubscriptionGuard'
 
 const CustomersPage = () => {
   const {
@@ -173,13 +174,15 @@ const CustomersPage = () => {
 
           {/* Add Button */}
           {canCreate && (
-            <button
-              onClick={() => openModal()}
-              className="bg-gradient-to-r from-success-500 to-success-600 text-white px-6 py-2 rounded-lg font-medium hover:from-success-600 hover:to-success-700 transition-all duration-300 shadow-medium flex items-center"
-            >
-              <span className="mr-2">➕</span>
-              Yeni Müşteri
-            </button>
+            <SubscriptionGuard requiresActiveSubscription={true} actionName="Yeni müşteri ekleme">
+              <button
+                onClick={() => openModal()}
+                className="bg-gradient-to-r from-success-500 to-success-600 text-white px-6 py-2 rounded-lg font-medium hover:from-success-600 hover:to-success-700 transition-all duration-300 shadow-medium flex items-center"
+              >
+                <span className="mr-2">➕</span>
+                Yeni Müşteri
+              </button>
+            </SubscriptionGuard>
           )}
         </div>
       </div>
@@ -207,13 +210,15 @@ const CustomersPage = () => {
             }
           </p>
           {canCreate && !searchTerm && (
-            <button
-              onClick={() => openModal()}
-              className="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-2 rounded-lg font-medium hover:from-primary-600 hover:to-primary-700 transition-all duration-300 shadow-medium"
-            >
-              <span className="mr-2">➕</span>
-              İlk Müşteriyi Ekle
-            </button>
+            <SubscriptionGuard requiresActiveSubscription={true} actionName="İlk müşteri ekleme">
+              <button
+                onClick={() => openModal()}
+                className="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-2 rounded-lg font-medium hover:from-primary-600 hover:to-primary-700 transition-all duration-300 shadow-medium"
+              >
+                <span className="mr-2">➕</span>
+                İlk Müşteriyi Ekle
+              </button>
+            </SubscriptionGuard>
           )}
         </div>
       ) : (
@@ -273,20 +278,24 @@ const CustomersPage = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
                           {canUpdate && (
-                            <button
-                              onClick={() => openModal(customer)}
-                              className="bg-gradient-to-r from-warning-500 to-warning-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:from-warning-600 hover:to-warning-700 transition-all duration-300 shadow-soft"
-                            >
-                              ✏️ Düzenle
-                            </button>
+                            <SubscriptionGuard requiresActiveSubscription={true} actionName="Müşteri düzenleme">
+                              <button
+                                onClick={() => openModal(customer)}
+                                className="bg-gradient-to-r from-warning-500 to-warning-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:from-warning-600 hover:to-warning-700 transition-all duration-300 shadow-soft"
+                              >
+                                ✏️ Düzenle
+                              </button>
+                            </SubscriptionGuard>
                           )}
                           {canDelete && (
-                            <button
-                              onClick={() => handleDelete(customer)}
-                              className="bg-gradient-to-r from-danger-500 to-danger-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:from-danger-600 hover:to-danger-700 transition-all duration-300 shadow-soft"
-                            >
-                              🗑️ Sil
-                            </button>
+                            <SubscriptionGuard requiresActiveSubscription={true} actionName="Müşteri silme" showTooltip={false}>
+                              <button
+                                onClick={() => handleDelete(customer)}
+                                className="bg-gradient-to-r from-danger-500 to-danger-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:from-danger-600 hover:to-danger-700 transition-all duration-300 shadow-soft"
+                              >
+                                🗑️ Sil
+                              </button>
+                            </SubscriptionGuard>
                           )}
                         </div>
                       </td>

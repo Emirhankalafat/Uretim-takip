@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { logout } from '../features/auth/authSlice';
+import { clearProfile } from '../features/profile/profileSlice';
 import authService from '../features/auth/services/authService';
 import usePermissions from '../hooks/usePermissions';
 import NotificationIcon from '../features/notifications/components/NotificationIcon';
 import NotificationDropdown from '../features/notifications/components/NotificationDropdown';
+import SubscriptionBanner from '../components/SubscriptionBanner';
 
 const MainLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -23,6 +25,7 @@ const MainLayout = ({ children }) => {
       console.error('Logout hatası:', error);
     } finally {
       dispatch(logout());
+      dispatch(clearProfile());
       navigate('/login');
     }
   };
@@ -285,6 +288,9 @@ const MainLayout = ({ children }) => {
           </div>
         </main>
       </div>
+      
+      {/* Subscription Banner */}
+      <SubscriptionBanner />
     </div>
   );
 };

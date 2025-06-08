@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux'
 import categoryService from '../services/categoryService'
 import usePermissions from '../../../hooks/usePermissions'
 import Toast from '../../../components/Toast'
+import SubscriptionGuard from '../../../components/SubscriptionGuard'
 
 const CategoriesPage = () => {
   const [categories, setCategories] = useState([])
@@ -196,13 +197,15 @@ const CategoriesPage = () => {
               <span className="font-semibold text-primary-600">{categories.length}</span>
             </div>
             {canCreate && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="btn-modern bg-gradient-to-r from-primary-600 to-primary-700 text-white px-6 py-3 rounded-xl font-medium shadow-medium hover:shadow-strong transition-all duration-300 hover:scale-105"
-              >
-                <span className="mr-2">➕</span>
-                Kategori Ekle
-              </button>
+              <SubscriptionGuard requiresActiveSubscription={true} actionName="Kategori ekleme">
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="btn-modern bg-gradient-to-r from-primary-600 to-primary-700 text-white px-6 py-3 rounded-xl font-medium shadow-medium hover:shadow-strong transition-all duration-300 hover:scale-105"
+                >
+                  <span className="mr-2">➕</span>
+                  Kategori Ekle
+                </button>
+              </SubscriptionGuard>
             )}
           </div>
         </div>
@@ -269,13 +272,15 @@ const CategoriesPage = () => {
             }
           </p>
           {!searchTerm && canCreate && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn-modern bg-gradient-to-r from-primary-600 to-primary-700 text-white px-6 py-3 rounded-xl font-medium shadow-medium hover:shadow-strong transition-all duration-300"
-            >
-              <span className="mr-2">➕</span>
-              İlk Kategoriyi Oluştur
-            </button>
+            <SubscriptionGuard requiresActiveSubscription={true} actionName="Kategori oluşturma">
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="btn-modern bg-gradient-to-r from-primary-600 to-primary-700 text-white px-6 py-3 rounded-xl font-medium shadow-medium hover:shadow-strong transition-all duration-300"
+              >
+                <span className="mr-2">➕</span>
+                İlk Kategoriyi Oluştur
+              </button>
+            </SubscriptionGuard>
           )}
         </div>
       ) : viewMode === 'grid' ? (
@@ -293,24 +298,28 @@ const CategoriesPage = () => {
                 </div>
                 {(canUpdate || canDelete) && (
                   <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    {canUpdate && (
-                      <button
-                        onClick={() => openEditModal(category)}
-                        className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-300"
-                        title="Düzenle"
-                      >
-                        <span className="text-sm">✏️</span>
-                      </button>
-                    )}
-                    {canDelete && (
-                      <button
-                        onClick={() => handleDeleteCategory(category)}
-                        className="p-2 text-gray-400 hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-all duration-300"
-                        title="Sil"
-                      >
-                        <span className="text-sm">🗑️</span>
-                      </button>
-                    )}
+                                            {canUpdate && (
+                          <SubscriptionGuard requiresActiveSubscription={true} actionName="Kategori düzenleme">
+                            <button
+                              onClick={() => openEditModal(category)}
+                              className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-300"
+                              title="Düzenle"
+                            >
+                              <span className="text-sm">✏️</span>
+                            </button>
+                          </SubscriptionGuard>
+                        )}
+                        {canDelete && (
+                          <SubscriptionGuard requiresActiveSubscription={true} actionName="Kategori silme" showTooltip={false}>
+                            <button
+                              onClick={() => handleDeleteCategory(category)}
+                              className="p-2 text-gray-400 hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-all duration-300"
+                              title="Sil"
+                            >
+                              <span className="text-sm">🗑️</span>
+                            </button>
+                          </SubscriptionGuard>
+                        )}
                   </div>
                 )}
               </div>
@@ -387,22 +396,26 @@ const CategoriesPage = () => {
                     {(canUpdate || canDelete) && (
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
-                          {canUpdate && (
-                            <button
-                              onClick={() => openEditModal(category)}
-                              className="text-primary-600 hover:text-primary-900 hover:bg-primary-50 px-3 py-1 rounded-lg transition-all duration-300"
-                            >
-                              Düzenle
-                            </button>
-                          )}
-                          {canDelete && (
-                            <button
-                              onClick={() => handleDeleteCategory(category)}
-                              className="text-danger-600 hover:text-danger-900 hover:bg-danger-50 px-3 py-1 rounded-lg transition-all duration-300"
-                            >
-                              Sil
-                            </button>
-                          )}
+                                                      {canUpdate && (
+                              <SubscriptionGuard requiresActiveSubscription={true} actionName="Kategori düzenleme">
+                                <button
+                                  onClick={() => openEditModal(category)}
+                                  className="text-primary-600 hover:text-primary-900 hover:bg-primary-50 px-3 py-1 rounded-lg transition-all duration-300"
+                                >
+                                  Düzenle
+                                </button>
+                              </SubscriptionGuard>
+                            )}
+                            {canDelete && (
+                              <SubscriptionGuard requiresActiveSubscription={true} actionName="Kategori silme" showTooltip={false}>
+                                <button
+                                  onClick={() => handleDeleteCategory(category)}
+                                  className="text-danger-600 hover:text-danger-900 hover:bg-danger-50 px-3 py-1 rounded-lg transition-all duration-300"
+                                >
+                                  Sil
+                                </button>
+                              </SubscriptionGuard>
+                            )}
                         </div>
                       </td>
                     )}

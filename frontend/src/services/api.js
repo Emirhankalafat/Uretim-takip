@@ -172,11 +172,8 @@ api.interceptors.response.use(
           return Promise.reject(error)
         }
         
-        // Initialize edilmemişse de refresh token deneme
-        if (store && !store.getState().auth.initialized) {
-          console.log('🔓 App henüz initialize edilmemiş, auth-status 401 hatası normal - Refresh token denenmeyecek')
-          return Promise.reject(error)
-        }
+        // Protected sayfalarda refresh token dene (initialize durumu önemli değil)
+        console.log(`🔒 Protected sayfada auth-status 401 hatası: ${currentPath} - Refresh token denenecek`)
       }
 
       // Confirm endpoint'inde 401 hatası varsa refresh token deneme (hesap doğrulama için normal)

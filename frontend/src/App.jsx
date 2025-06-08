@@ -132,17 +132,23 @@ function App() {
               style: {
                 background: '#363636',
                 color: '#fff',
+                zIndex: 10000,
               },
               success: {
                 style: {
                   background: '#10B981',
+                  zIndex: 10000,
                 },
               },
               error: {
                 style: {
                   background: '#EF4444',
+                  zIndex: 10000,
                 },
               },
+            }}
+            containerStyle={{
+              zIndex: 10000,
             }}
           />
           <AppRoutes />

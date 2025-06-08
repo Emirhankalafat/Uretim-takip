@@ -7,6 +7,7 @@ import userService from '../../users/services/userService'
 import usePermissions from '../../../hooks/usePermissions'
 import Toast from '../../../components/Toast'
 import { useSelector } from 'react-redux'
+import SubscriptionGuard from '../../../components/SubscriptionGuard'
 
 const OrdersPage = () => {
   const [orders, setOrders] = useState([])
@@ -410,12 +411,14 @@ const OrdersPage = () => {
           </div>
           <div className="flex items-center space-x-4">
             {canCreate && (
-              <button 
-                onClick={handleCreateOrderButtonClick}
-                className="bg-white text-primary-600 px-6 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors shadow-medium"
-              >
-                + Yeni Sipariş
-              </button>
+              <SubscriptionGuard requiresActiveSubscription={true} actionName="Yeni sipariş oluşturma">
+                <button 
+                  onClick={handleCreateOrderButtonClick}
+                  className="bg-white text-primary-600 px-6 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors shadow-medium"
+                >
+                  + Yeni Sipariş
+                </button>
+              </SubscriptionGuard>
             )}
           </div>
         </div>
@@ -471,12 +474,14 @@ const OrdersPage = () => {
             <h3 className="text-lg font-medium text-gray-900 mb-2">Sipariş bulunamadı</h3>
             <p className="text-gray-600">Henüz sipariş oluşturulmamış veya filtrelere uygun sipariş yok.</p>
             {canCreate && (
-              <button 
-                onClick={handleCreateOrderButtonClick}
-                className="mt-4 bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors"
-              >
-                İlk Siparişi Oluştur
-              </button>
+              <SubscriptionGuard requiresActiveSubscription={true} actionName="İlk sipariş oluşturma">
+                <button 
+                  onClick={handleCreateOrderButtonClick}
+                  className="mt-4 bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors"
+                >
+                  İlk Siparişi Oluştur
+                </button>
+              </SubscriptionGuard>
             )}
           </div>
         ) : (
@@ -569,12 +574,14 @@ const OrdersPage = () => {
                           👁️
                         </button>
                         {canDelete && (
-                          <button 
-                            onClick={() => handleDeleteOrder(order.id, order.order_number)}
-                            className="text-danger-600 hover:text-danger-900 p-1"
-                          >
-                            🗑️
-                          </button>
+                          <SubscriptionGuard requiresActiveSubscription={true} actionName="Sipariş silme">
+                            <button 
+                              onClick={() => handleDeleteOrder(order.id, order.order_number)}
+                              className="text-danger-600 hover:text-danger-900 p-1"
+                            >
+                              🗑️
+                            </button>
+                          </SubscriptionGuard>
                         )}
                       </div>
                     </td>

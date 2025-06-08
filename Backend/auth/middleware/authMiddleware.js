@@ -90,7 +90,7 @@ const authenticateSystemAdmin = async (req, res, next) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 15 * 60 * 1000
+        maxAge: 15 * 60 * 1000 // 15 dakika
       });
     }
     if (!token) {
@@ -144,4 +144,57 @@ const authenticateApiKey = async (req, res, next) => {
   }
 };
 
-module.exports = { authenticateToken, authenticateSystemAdmin, authenticateApiKey }; 
+// Aktif abonelik kontrolü - sadece trial ve premium kullanıcılar POST işlemleri yapabilir
+const requireActiveSubscription = async (req, res, next) => {
+  try {
+    // GET istekleri için kontrole gerek yok - basic kullanıcılar görebilir
+    if (req.method === 'GET') {
+      return next();
+    }
+
+    // Kullanıcının şirket abonelik paketini kontrol et
+    if (!req.user) {
+      return res.status(401).json({ message: 'Kullanıcı bilgisi bulunamadı.' });
+    }
+
+    // Şirket bilgilerini al
+    const company = await prisma.company.findUnique({
+      where: { id: req.user.company_id },
+      select: { 
+        Suspscription_package: true,
+        Sub_end_time: true 
+      }
+    });
+
+    if (!company) {
+      return res.status(404).json({ message: 'Şirket bulunamadı.' });
+    }
+
+    // Basic paket kontrolü
+    if (company.Suspscription_package === 'basic') {
+      return res.status(403).json({ 
+        message: 'Bu işlemi gerçekleştirmek için premium veya trial üyelik gereklidir. Lütfen aboneliğinizi yükseltin.',
+        error_code: 'SUBSCRIPTION_REQUIRED',
+        current_package: 'basic'
+      });
+    }
+
+    // Trial veya premium ise devam et
+    if (company.Suspscription_package === 'trial' || company.Suspscription_package === 'premium') {
+      return next();
+    }
+
+    // Bilinmeyen paket tipi
+    return res.status(403).json({ 
+      message: 'Geçersiz abonelik paketi.',
+      error_code: 'INVALID_PACKAGE',
+      current_package: company.Suspscription_package
+    });
+
+  } catch (error) {
+    logger.error('Subscription middleware hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
+module.exports = { authenticateToken, authenticateSystemAdmin, authenticateApiKey, requireActiveSubscription }; 

@@ -15,7 +15,7 @@ const paymentRoutes = require('./payment/routes');
 const adminRoutes = require('./admin/adminRoutes');
 const mcpRoutes = require('./MCP/mcpRouter');
 const { startTokenCleanupScheduler } = require('./auth/utils/scheduler');
-const { authenticateToken, authenticateSystemAdmin } = require('./auth/middleware/authMiddleware');
+const { authenticateToken, authenticateSystemAdmin, requireActiveSubscription } = require('./auth/middleware/authMiddleware');
 const { csrfProtection } = require('./auth/middleware/csrfMiddleware');
 const { connectRedis } = require('./config/redis');
 const { checkInvite, acceptInvite } = require('./user/userController');
@@ -183,17 +183,17 @@ app.use('/api/user/invite', inviteRateLimiter, userRoutes);
 app.use('/api/auth/forgot-password', resetPasswordRateLimiter, authRoutes);
 app.use('/api/auth/reset-password', resetPasswordRateLimiter, authRoutes);
 
-// Diğer tüm route'lar için auth + CSRF koruması
-app.use('/api/permissions', authenticateToken, csrfProtection, permissionRoutes);
-app.use('/api/user', authenticateToken, csrfProtection, userRoutes);
-app.use('/api/categories', authenticateToken, csrfProtection, categoryRoutes);
-app.use('/api/products', authenticateToken, csrfProtection, productRoutes);
-app.use('/api/product-steps', authenticateToken, csrfProtection, productStepsRoutes);
-app.use('/api/customers', authenticateToken, csrfProtection, customerRoutes);
-app.use('/api/orders', authenticateToken, csrfProtection, orderRoutes);
-app.use('/api/my-jobs', authenticateToken, csrfProtection, myJobsRoutes);
+// Diğer tüm route'lar için auth + CSRF koruması + subscription kontrolü
+app.use('/api/permissions', authenticateToken, csrfProtection, requireActiveSubscription, permissionRoutes);
+app.use('/api/user', authenticateToken, csrfProtection, requireActiveSubscription, userRoutes);
+app.use('/api/categories', authenticateToken, csrfProtection, requireActiveSubscription, categoryRoutes);
+app.use('/api/products', authenticateToken, csrfProtection, requireActiveSubscription, productRoutes);
+app.use('/api/product-steps', authenticateToken, csrfProtection, requireActiveSubscription, productStepsRoutes);
+app.use('/api/customers', authenticateToken, csrfProtection, requireActiveSubscription, customerRoutes);
+app.use('/api/orders', authenticateToken, csrfProtection, requireActiveSubscription, orderRoutes);
+app.use('/api/my-jobs', authenticateToken, csrfProtection, requireActiveSubscription, myJobsRoutes);
 app.use('/api/mcp', mcpRoutes);
-app.use('/api/notifications', authenticateToken, csrfProtection, notificationRoutes);
+app.use('/api/notifications', authenticateToken, csrfProtection, requireActiveSubscription, notificationRoutes);
 
 // Admin routes - authentication ve CSRF koruması gerekli
 app.use('/api/admin', authenticateSystemAdmin, adminRoutes);

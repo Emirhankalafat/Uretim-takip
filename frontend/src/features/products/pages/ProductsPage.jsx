@@ -4,6 +4,7 @@ import productService from '../services/productService'
 import categoryService from '../../categories/services/categoryService'
 import usePermissions from '../../../hooks/usePermissions'
 import Toast from '../../../components/Toast'
+import SubscriptionGuard from '../../../components/SubscriptionGuard'
 
 const ProductsPage = () => {
   const [products, setProducts] = useState([])
@@ -240,13 +241,15 @@ const ProductsPage = () => {
               <span className="font-semibold text-success-600">{products.length}</span>
             </div>
             {canCreate && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="btn-modern bg-gradient-to-r from-success-600 to-success-700 text-white px-6 py-3 rounded-xl font-medium shadow-medium hover:shadow-strong transition-all duration-300 hover:scale-105"
-              >
-                <span className="mr-2">➕</span>
-                Ürün Ekle
-              </button>
+              <SubscriptionGuard requiresActiveSubscription={true} actionName="Ürün ekleme">
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="btn-modern bg-gradient-to-r from-success-600 to-success-700 text-white px-6 py-3 rounded-xl font-medium shadow-medium hover:shadow-strong transition-all duration-300 hover:scale-105"
+                >
+                  <span className="mr-2">➕</span>
+                  Ürün Ekle
+                </button>
+              </SubscriptionGuard>
             )}
           </div>
         </div>
@@ -352,13 +355,15 @@ const ProductsPage = () => {
             }
           </p>
           {!filters.category_id && !filters.search && canCreate && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn-modern bg-gradient-to-r from-success-600 to-success-700 text-white px-6 py-3 rounded-xl font-medium shadow-medium hover:shadow-strong transition-all duration-300"
-            >
-              <span className="mr-2">➕</span>
-              İlk Ürünü Oluştur
-            </button>
+            <SubscriptionGuard requiresActiveSubscription={true} actionName="Ürün oluşturma">
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="btn-modern bg-gradient-to-r from-success-600 to-success-700 text-white px-6 py-3 rounded-xl font-medium shadow-medium hover:shadow-strong transition-all duration-300"
+              >
+                <span className="mr-2">➕</span>
+                İlk Ürünü Oluştur
+              </button>
+            </SubscriptionGuard>
           )}
         </div>
       ) : viewMode === 'grid' ? (
@@ -377,22 +382,26 @@ const ProductsPage = () => {
                 {(canUpdate || canDelete) && (
                   <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     {canUpdate && (
-                      <button
-                        onClick={() => openEditModal(product)}
-                        className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-300"
-                        title="Düzenle"
-                      >
-                        <span className="text-sm">✏️</span>
-                      </button>
+                      <SubscriptionGuard requiresActiveSubscription={true} actionName="Ürün düzenleme">
+                        <button
+                          onClick={() => openEditModal(product)}
+                          className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-300"
+                          title="Düzenle"
+                        >
+                          <span className="text-sm">✏️</span>
+                        </button>
+                      </SubscriptionGuard>
                     )}
                     {canDelete && (
-                      <button
-                        onClick={() => handleDeleteProduct(product)}
-                        className="p-2 text-gray-400 hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-all duration-300"
-                        title="Sil"
-                      >
-                        <span className="text-sm">🗑️</span>
-                      </button>
+                      <SubscriptionGuard requiresActiveSubscription={true} actionName="Ürün silme" showTooltip={false}>
+                        <button
+                          onClick={() => handleDeleteProduct(product)}
+                          className="p-2 text-gray-400 hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-all duration-300"
+                          title="Sil"
+                        >
+                          <span className="text-sm">🗑️</span>
+                        </button>
+                      </SubscriptionGuard>
                     )}
                   </div>
                 )}
@@ -471,20 +480,24 @@ const ProductsPage = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
                           {canUpdate && (
-                            <button
-                              onClick={() => openEditModal(product)}
-                              className="text-primary-600 hover:text-primary-900 hover:bg-primary-50 px-3 py-1 rounded-lg transition-all duration-300"
-                            >
-                              Düzenle
-                            </button>
+                            <SubscriptionGuard requiresActiveSubscription={true} actionName="Ürün düzenleme">
+                              <button
+                                onClick={() => openEditModal(product)}
+                                className="text-primary-600 hover:text-primary-900 hover:bg-primary-50 px-3 py-1 rounded-lg transition-all duration-300"
+                              >
+                                Düzenle
+                              </button>
+                            </SubscriptionGuard>
                           )}
                           {canDelete && (
-                            <button
-                              onClick={() => handleDeleteProduct(product)}
-                              className="text-danger-600 hover:text-danger-900 hover:bg-danger-50 px-3 py-1 rounded-lg transition-all duration-300"
-                            >
-                              Sil
-                            </button>
+                            <SubscriptionGuard requiresActiveSubscription={true} actionName="Ürün silme" showTooltip={false}>
+                              <button
+                                onClick={() => handleDeleteProduct(product)}
+                                className="text-danger-600 hover:text-danger-900 hover:bg-danger-50 px-3 py-1 rounded-lg transition-all duration-300"
+                              >
+                                Sil
+                              </button>
+                            </SubscriptionGuard>
                           )}
                         </div>
                       </td>
