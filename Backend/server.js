@@ -76,33 +76,7 @@ app.use(helmet({
   }
 }));
 
-// JSON ve URL encoded body parser - CORS'tan önce
-app.use(express.json({ limit: '10mb' })); // JSON body size limit
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(cookieParser());
-
-// Input sanitization middleware - tüm gelen veriler için
-app.use(sanitizeMiddleware);
-
-// İyzico 3D Secure callback - Body parser'dan sonra, CORS'tan ÖNCE tanımla
-app.options('/api/payment/3dsecure/callback', (req, res) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  res.status(200).end();
-});
-
-app.post('/api/payment/3dsecure/callback', (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  
-  // PaymentController.handle3DSCallback'i direkt çağır
-  const PaymentController = require('./payment/paymentController');
-  PaymentController.handle3DSCallback(req, res);
-});
-
-// CORS ayarları - CSRF için X-New-CSRF-Token expose edilir
+// CORS ayarları - DİĞER MIDDLEWARE'LERDEN ÖNCE
 const corsOptions = {
   origin: isProduction
     ? function (origin, callback) {
@@ -133,6 +107,32 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
+
+// JSON ve URL encoded body parser - CORS'tan sonra
+app.use(express.json({ limit: '10mb' })); // JSON body size limit
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
+
+// İyzico 3D Secure callback - Body parser'dan sonra tanımla
+app.options('/api/payment/3dsecure/callback', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.status(200).end();
+});
+
+app.post('/api/payment/3dsecure/callback', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  
+  // PaymentController.handle3DSCallback'i direkt çağır
+  const PaymentController = require('./payment/paymentController');
+  PaymentController.handle3DSCallback(req, res);
+});
+
+// Input sanitization middleware - CORS ve body parser'dan sonra
+app.use(sanitizeMiddleware);
 
 // Rate limit log fonksiyonu
 function logRateLimit(req, key, message) {

@@ -30,40 +30,67 @@ function sanitizeObject(obj) {
     return obj;
   }
   
-  const sanitized = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (typeof value === 'string') {
-      sanitized[key] = sanitizeInput(value);
-    } else if (typeof value === 'object' && value !== null) {
-      sanitized[key] = sanitizeObject(value);
-    } else {
-      sanitized[key] = value;
-    }
+  // Array kontrolü
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeObject(item));
   }
   
-  return sanitized;
+  // Circular reference koruması için basit kontrol
+  if (obj.constructor && obj.constructor.name === 'Object') {
+    const sanitized = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (typeof value === 'string') {
+        sanitized[key] = sanitizeInput(value);
+      } else if (typeof value === 'object' && value !== null) {
+        sanitized[key] = sanitizeObject(value);
+      } else {
+        sanitized[key] = value;
+      }
+    }
+    return sanitized;
+  }
+  
+  // Diğer object türleri için (Date, RegExp, vs.) orijinal değeri döndür
+  return obj;
 }
 
 /**
  * Express middleware for input sanitization
  */
 const sanitizeMiddleware = (req, res, next) => {
-  // Body'yi sanitize et
-  if (req.body) {
-    req.body = sanitizeObject(req.body);
+  try {
+    // Belirli path'leri sanitization'dan muaf tut
+    const exemptPaths = [
+      '/api/payment/3dsecure/callback',
+      '/api/auth/csrf-token',
+      '/api/admin/csrf-token'
+    ];
+    
+    if (exemptPaths.includes(req.path)) {
+      return next();
+    }
+    
+    // Body'yi sanitize et
+    if (req.body && typeof req.body === 'object') {
+      req.body = sanitizeObject(req.body);
+    }
+    
+    // Query parametrelerini sanitize et
+    if (req.query && typeof req.query === 'object') {
+      req.query = sanitizeObject(req.query);
+    }
+    
+    // Params'ları sanitize et
+    if (req.params && typeof req.params === 'object') {
+      req.params = sanitizeObject(req.params);
+    }
+    
+    next();
+  } catch (error) {
+    console.error('Sanitization middleware error:', error);
+    // Sanitization hatası durumunda devam et ama log et
+    next();
   }
-  
-  // Query parametrelerini sanitize et
-  if (req.query) {
-    req.query = sanitizeObject(req.query);
-  }
-  
-  // Params'ları sanitize et
-  if (req.params) {
-    req.params = sanitizeObject(req.params);
-  }
-  
-  next();
 };
 
 /**
