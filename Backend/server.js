@@ -1,3 +1,6 @@
+// .env dosyasını EN BAŞTA yükle - SSL konfigürasyonundan ÖNCE
+require('dotenv').config();
+
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
@@ -30,7 +33,6 @@ const { RedisStore } = require('rate-limit-redis');
 const { redisClient } = require('./config/redis');
 const reportRoutes = require('./reports/reportRoutes');
 const notificationRoutes = require('./notifications/notification.routes');
-require('dotenv').config();
 
 // BigInt serialization için global fix
 BigInt.prototype.toJSON = function() {
