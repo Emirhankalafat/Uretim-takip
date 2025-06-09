@@ -1,10 +1,15 @@
-const { PrismaClient } = require('@prisma/client');
+const { getPrismaClient, checkPrismaClient } = require('../utils/prismaClient');
 const notificationService = require('../notifications/notification.service');
-const prisma = new PrismaClient();
+
+// Merkezi prisma client'ı al
+const prisma = getPrismaClient();
 
 // Sipariş oluşturma
 const createOrder = async (req, res) => {
   try {
+    // Prisma client kontrolü
+    checkPrismaClient(prisma);
+    
     const { Customer_id, priority, deadline, notes, products, is_stock } = req.body;
     const company_id = req.user.company_id;
     let customerName = null;
@@ -266,6 +271,9 @@ const getProductStepsTemplate = async (req, res) => {
 // Siparişleri listeleme
 const getOrders = async (req, res) => {
   try {
+    // Prisma client kontrolü
+    checkPrismaClient(prisma);
+
     const company_id = req.user.company_id;
     const user_id = req.user.id;
     const is_SuperAdmin = req.user.is_SuperAdmin;

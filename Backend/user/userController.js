@@ -1,6 +1,9 @@
 const bcrypt = require('bcryptjs');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { getPrismaClient, checkPrismaClient } = require('../utils/prismaClient');
+
+// Merkezi prisma client'ı al
+const prisma = getPrismaClient();
+
 require('dotenv').config();
 const { createInviteToken, createConfirmToken } = require('../auth/utils/tokenUtils');
 const { sendInviteEmail, sendConfirmEmail } = require('../auth/utils/emailUtils');
@@ -432,6 +435,9 @@ const getUserById = async (req, res) => {
 // Genel sistem duyurularını getir
 const getAnnouncements = async (req, res) => {
   try {
+    // Prisma client kontrolü
+    checkPrismaClient(prisma);
+
     const { page = 1, limit = 10 } = req.query;
 
     const now = new Date();
@@ -495,6 +501,9 @@ const getAnnouncements = async (req, res) => {
 // Belirli bir duyurunun detayını getir
 const getAnnouncementById = async (req, res) => {
   try {
+    // Prisma client kontrolü
+    checkPrismaClient(prisma);
+
     const { announcementId } = req.params;
     
     // ID'nin numeric olduğunu kontrol et
