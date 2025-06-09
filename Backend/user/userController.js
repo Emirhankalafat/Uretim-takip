@@ -429,6 +429,235 @@ const getUserById = async (req, res) => {
   }
 };
 
+// Genel sistem duyurularını getir
+const getAnnouncements = async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+
+    const now = new Date();
+
+    const announcements = await prisma.announcements.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { validUntil: null }, // Süresiz duyurular
+          { validUntil: { gte: now } } // Süresi henüz dolmamış duyurular
+        ]
+      },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        type: true,
+        validUntil: true,
+        created_at: true
+      },
+      orderBy: { created_at: 'desc' },
+      skip: (page - 1) * limit,
+      take: parseInt(limit)
+    });
+
+    const totalCount = await prisma.announcements.count({
+      where: {
+        isActive: true,
+        OR: [
+          { validUntil: null },
+          { validUntil: { gte: now } }
+        ]
+      }
+    });
+
+    // BigInt'leri stringe çevir
+    const formattedAnnouncements = announcements.map(announcement => ({
+      ...announcement,
+      id: announcement.id.toString()
+    }));
+
+    res.status(200).json({
+      message: 'Duyurular başarıyla getirildi.',
+      data: {
+        announcements: formattedAnnouncements,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalCount / limit),
+          totalCount,
+          limit: parseInt(limit)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Duyuru getirme hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
+// Belirli bir duyurunun detayını getir
+const getAnnouncementById = async (req, res) => {
+  try {
+    const { announcementId } = req.params;
+    
+    // ID'nin numeric olduğunu kontrol et
+    if (!/^\d+$/.test(announcementId)) {
+      return res.status(400).json({ message: 'Geçersiz duyuru ID formatı.' });
+    }
+    
+    const now = new Date();
+
+    const announcement = await prisma.announcements.findUnique({
+      where: { 
+        id: BigInt(announcementId)
+      },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        type: true,
+        validUntil: true,
+        created_at: true,
+        isActive: true
+      }
+    });
+
+    if (!announcement) {
+      return res.status(404).json({ message: 'Duyuru bulunamadı.' });
+    }
+
+    // Duyuru aktif mi ve süresi dolmamış mı kontrol et
+    if (!announcement.isActive) {
+      return res.status(404).json({ message: 'Duyuru artık aktif değil.' });
+    }
+
+    if (announcement.validUntil && announcement.validUntil < now) {
+      return res.status(404).json({ message: 'Duyuru süresi dolmuş.' });
+    }
+
+    // BigInt'i stringe çevir
+    const formattedAnnouncement = {
+      ...announcement,
+      id: announcement.id.toString()
+    };
+
+    res.status(200).json({
+      message: 'Duyuru detayı başarıyla getirildi.',
+      data: {
+        announcement: formattedAnnouncement
+      }
+    });
+
+  } catch (error) {
+    console.error('Duyuru detay getirme hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
+// Şirket profili getir
+const getCompanyProfile = async (req, res) => {
+  try {
+    const companyId = req.user.company_id;
+
+    const company = await prisma.company.findUnique({
+      where: { id: BigInt(companyId) },
+      select: {
+        id: true,
+        Name: true,
+        Created_At: true,
+        Suspscription_package: true,
+        Sub_end_time: true,
+        Max_User: true,
+        api_key: true,
+        _count: {
+          select: {
+            users: { where: { is_active: true } },
+            products: true,
+            orders: true
+          }
+        }
+      }
+    });
+
+    if (!company) {
+      return res.status(404).json({ message: 'Şirket bulunamadı.' });
+    }
+
+    // API key'i dashboard'daki gibi göster (maskelenmemiş)
+    const formattedCompany = {
+      ...company,
+      id: company.id.toString()
+    };
+
+    res.status(200).json({
+      message: 'Şirket profili başarıyla getirildi.',
+      data: {
+        company: formattedCompany
+      }
+    });
+
+  } catch (error) {
+    console.error('Şirket profili getirme hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
+// Şirket ismini güncelle (SuperAdmin için)
+const updateCompanyProfile = async (req, res) => {
+  try {
+    // Debug log
+    console.log('updateCompanyProfile - req.user:', {
+      id: req.user.id,
+      is_SuperAdmin: req.user.is_SuperAdmin,
+      company_id: req.user.company_id,
+      name: req.user.Name,
+      mail: req.user.Mail
+    });
+
+    if (!req.user.is_SuperAdmin) {
+      console.log('🚫 SuperAdmin kontrolü başarısız - kullanıcı SuperAdmin değil');
+      return res.status(403).json({ message: 'Sadece SuperAdmin şirket profilini düzenleyebilir.' });
+    }
+
+    console.log('✅ SuperAdmin kontrolü başarılı');
+
+    const companyId = req.user.company_id;
+    const { name } = req.body;
+
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ message: 'Şirket ismi gerekli.' });
+    }
+
+    const updatedCompany = await prisma.company.update({
+      where: { id: BigInt(companyId) },
+      data: { Name: name.trim() },
+      select: {
+        id: true,
+        Name: true,
+        Created_At: true,
+        Suspscription_package: true,
+        Sub_end_time: true,
+        Max_User: true,
+        api_key: true
+      }
+    });
+
+    // BigInt'leri stringe çevir
+    const formattedCompany = {
+      ...updatedCompany,
+      id: updatedCompany.id.toString()
+    };
+
+    res.status(200).json({
+      message: 'Şirket profili başarıyla güncellendi.',
+      data: {
+        company: formattedCompany
+      }
+    });
+
+  } catch (error) {
+    console.error('Şirket profili güncelleme hatası:', error);
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
 module.exports = {
   inviteUser,
   acceptInvite,
@@ -436,5 +665,9 @@ module.exports = {
   checkInvite,
   getCompanyUsers,
   getSimpleCompanyUsers,
-  getUserById
+  getUserById,
+  getAnnouncements,
+  getAnnouncementById,
+  getCompanyProfile,
+  updateCompanyProfile
 }; 

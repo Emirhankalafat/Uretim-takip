@@ -1,17 +1,32 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useDispatch } from 'react-redux'
 import { toast } from 'react-hot-toast'
+import api from '../../../services/api'
+import { setProfile } from '../../../store/slices/profileSlice'
 
 const PaymentSuccessPage = () => {
   const navigate = useNavigate()
+  const dispatch = useDispatch()
   const toastShown = useRef(false)
 
   useEffect(() => {
     if (!toastShown.current) {
       toast.success('🎉 Ödeme başarıyla tamamlandı! Premium üyeliğiniz aktifleştirildi.')
       toastShown.current = true
+      
+      // Profile bilgilerini yenile (subscription durumu güncellensin)
+      const refreshProfile = async () => {
+        try {
+          const response = await api.get('/auth/dashboard-profile')
+          dispatch(setProfile(response.data.profile))
+        } catch (error) {
+          console.error('Profile refresh failed:', error)
+        }
+      }
+      refreshProfile()
     }
-  }, [])
+  }, [dispatch])
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">

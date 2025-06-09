@@ -1,15 +1,19 @@
 // NotificationIcon.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchUnreadCount, selectUnreadNotificationCount } from '../notificationsSlice';
 
 const NotificationIcon = ({ onClick }) => {
   const dispatch = useDispatch();
   const unreadCount = useSelector(selectUnreadNotificationCount);
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
-    // Kullanıcı giriş yaptığında veya sayfa yüklendiğinde okunmamış sayısını çek
-    dispatch(fetchUnreadCount());
+    // Sadece bir kez çağır
+    if (!hasInitialized.current) {
+      dispatch(fetchUnreadCount());
+      hasInitialized.current = true;
+    }
   }, [dispatch]);
 
   return (

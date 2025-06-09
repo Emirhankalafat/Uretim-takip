@@ -447,6 +447,256 @@ const getSystemStats = async (req, res) => {
   }
 };
 
+// Duyuru oluştur
+const createAnnouncement = async (req, res) => {
+  try {
+    const { title, content, type = 'INFO', validUntil } = req.body;
+    
+    if (!title || !content) {
+      return res.status(400).json({ message: 'Başlık ve içerik gereklidir.' });
+    }
+
+    // Genel sistem duyurusu oluştur
+    const announcement = await prisma.announcements.create({
+      data: {
+        title,
+        content,
+        type,
+        validUntil: validUntil ? new Date(validUntil) : null,
+        createdBy: BigInt(req.systemAdmin.id),
+        company_id: null // Genel sistem duyurusu, belirli bir şirkete ait değil
+      }
+    });
+
+    // BigInt'leri stringe çevir
+    const formattedAnnouncement = {
+      ...announcement,
+      id: announcement.id.toString()
+    };
+
+    await logToDb({
+      type: 'info',
+      message: 'Yeni genel duyuru oluşturuldu',
+      details: `Başlık: ${title}`,
+      endpoint: '/admin/announcements',
+      ip: req.ip,
+      user_id: req.systemAdmin?.id ? Number(req.systemAdmin.id) : null
+    });
+
+    res.status(201).json({
+      message: 'Genel duyuru başarıyla oluşturuldu.',
+      announcement: formattedAnnouncement
+    });
+  } catch (error) {
+    logger.error('Duyuru oluşturma hatası:', error);
+    await logToDb({
+      type: 'error',
+      message: 'Duyuru oluşturma hatası',
+      details: error.message,
+      stack: error.stack,
+      endpoint: '/admin/announcements',
+      ip: req.ip,
+      user_id: req.systemAdmin?.id ? Number(req.systemAdmin.id) : null
+    });
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
+// Tüm duyuruları listele (Admin paneli için)
+const getAllAnnouncements = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, type, isActive } = req.query;
+    
+    let whereClause = {};
+    if (type) whereClause.type = type;
+    if (isActive !== undefined) whereClause.isActive = isActive === 'true';
+
+    const announcements = await prisma.announcements.findMany({
+      where: whereClause,
+      orderBy: { created_at: 'desc' },
+      skip: (page - 1) * limit,
+      take: parseInt(limit)
+    });
+
+    const totalCount = await prisma.announcements.count({ where: whereClause });
+
+    // BigInt'leri stringe çevir
+    const formattedAnnouncements = announcements.map(announcement => ({
+      ...announcement,
+      id: announcement.id.toString()
+    }));
+
+    res.status(200).json({
+      message: 'Duyurular başarıyla listelendi.',
+      announcements: formattedAnnouncements,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCount / limit),
+        totalCount,
+        limit: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    logger.error('Duyuru listeleme hatası:', error);
+    await logToDb({
+      type: 'error',
+      message: 'Duyuru listeleme hatası',
+      details: error.message,
+      stack: error.stack,
+      endpoint: '/admin/announcements',
+      ip: req.ip,
+      user_id: req.systemAdmin?.id ? Number(req.systemAdmin.id) : null
+    });
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
+// Duyuru güncelle
+const updateAnnouncement = async (req, res) => {
+  try {
+    const { announcementId } = req.params;
+    const { title, content, type, validUntil, isActive } = req.body;
+    
+    const announcement = await prisma.announcements.findUnique({
+      where: { id: BigInt(announcementId) }
+    });
+
+    if (!announcement) {
+      return res.status(404).json({ message: 'Duyuru bulunamadı.' });
+    }
+
+    const updatedAnnouncement = await prisma.announcements.update({
+      where: { id: BigInt(announcementId) },
+      data: {
+        ...(title && { title }),
+        ...(content && { content }),
+        ...(type && { type }),
+        ...(validUntil !== undefined && { validUntil: validUntil ? new Date(validUntil) : null }),
+        ...(isActive !== undefined && { isActive })
+      }
+    });
+
+    // BigInt'leri stringe çevir
+    const formattedAnnouncement = {
+      ...updatedAnnouncement,
+      id: updatedAnnouncement.id.toString()
+    };
+
+    await logToDb({
+      type: 'info',
+      message: 'Duyuru güncellendi',
+      details: `Duyuru ID: ${announcementId}`,
+      endpoint: `/admin/announcements/${announcementId}`,
+      ip: req.ip,
+      user_id: req.systemAdmin?.id ? Number(req.systemAdmin.id) : null
+    });
+
+    res.status(200).json({
+      message: 'Duyuru başarıyla güncellendi.',
+      announcement: formattedAnnouncement
+    });
+  } catch (error) {
+    logger.error('Duyuru güncelleme hatası:', error);
+    await logToDb({
+      type: 'error',
+      message: 'Duyuru güncelleme hatası',
+      details: error.message,
+      stack: error.stack,
+      endpoint: `/admin/announcements/${req.params.announcementId}`,
+      ip: req.ip,
+      user_id: req.systemAdmin?.id ? Number(req.systemAdmin.id) : null
+    });
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
+// Duyuru sil
+const deleteAnnouncement = async (req, res) => {
+  try {
+    const { announcementId } = req.params;
+    
+    const announcement = await prisma.announcements.findUnique({
+      where: { id: BigInt(announcementId) }
+    });
+
+    if (!announcement) {
+      return res.status(404).json({ message: 'Duyuru bulunamadı.' });
+    }
+
+    await prisma.announcements.delete({
+      where: { id: BigInt(announcementId) }
+    });
+
+    await logToDb({
+      type: 'info',
+      message: 'Duyuru silindi',
+      details: `Duyuru ID: ${announcementId}`,
+      endpoint: `/admin/announcements/${announcementId}`,
+      ip: req.ip,
+      user_id: req.systemAdmin?.id ? Number(req.systemAdmin.id) : null
+    });
+
+    res.status(200).json({
+      message: 'Duyuru başarıyla silindi.'
+    });
+  } catch (error) {
+    logger.error('Duyuru silme hatası:', error);
+    await logToDb({
+      type: 'error',
+      message: 'Duyuru silme hatası',
+      details: error.message,
+      stack: error.stack,
+      endpoint: `/admin/announcements/${req.params.announcementId}`,
+      ip: req.ip,
+      user_id: req.systemAdmin?.id ? Number(req.systemAdmin.id) : null
+    });
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
+
+// Duyuru detayı getir (Admin için)
+const getAnnouncementById = async (req, res) => {
+  try {
+    const { announcementId } = req.params;
+    
+    // ID'nin numeric olduğunu kontrol et
+    if (!/^\d+$/.test(announcementId)) {
+      return res.status(400).json({ message: 'Geçersiz duyuru ID formatı.' });
+    }
+    
+    const announcement = await prisma.announcements.findUnique({
+      where: { id: BigInt(announcementId) }
+    });
+
+    if (!announcement) {
+      return res.status(404).json({ message: 'Duyuru bulunamadı.' });
+    }
+
+    // BigInt'i stringe çevir
+    const formattedAnnouncement = {
+      ...announcement,
+      id: announcement.id.toString()
+    };
+
+    res.status(200).json({
+      message: 'Duyuru detayı başarıyla getirildi.',
+      announcement: formattedAnnouncement
+    });
+
+  } catch (error) {
+    logger.error('Duyuru detay getirme hatası:', error);
+    await logToDb({
+      type: 'error',
+      message: 'Duyuru detay getirme hatası',
+      details: error.message,
+      stack: error.stack,
+      endpoint: `/admin/announcements/${req.params.announcementId}`,
+      ip: req.ip,
+      user_id: req.systemAdmin?.id ? Number(req.systemAdmin.id) : null
+    });
+    res.status(500).json({ message: 'Sunucu hatası.' });
+  }
+};
 
 module.exports = {
   getAllUsers,
@@ -455,5 +705,10 @@ module.exports = {
   getSystemLogs,
   getCompanyDetails,
   updateCompanySubscription,
-  getSystemStats
+  getSystemStats,
+  createAnnouncement,
+  getAllAnnouncements,
+  updateAnnouncement,
+  deleteAnnouncement,
+  getAnnouncementById
 };

@@ -22,7 +22,10 @@ export const setApiStore = (storeInstance) => {
 // CSRF token almak için fonksiyon
 export const fetchCsrfToken = async () => {
   try {
-    const response = await api.get('/auth/csrf-token')
+    // URL'ye göre endpoint belirle - eğer admin panelindeyse admin endpoint'ini kullan
+    const isAdminPanel = window.location.pathname.startsWith('/admin')
+    const endpoint = isAdminPanel ? '/admin/csrf-token' : '/auth/csrf-token'
+    const response = await api.get(endpoint)
     const token = response.data.csrfToken
     csrfTokenManager.clearToken(); // Önce eski tokenı sil
     csrfTokenManager.setToken(token)
@@ -30,7 +33,7 @@ export const fetchCsrfToken = async () => {
     return token
   } catch (error) {
     if (error.response?.status === 429) {
-      console.error('[CSRF] Rate limit aşıldı! /auth/csrf-token endpointine çok fazla istek atıldı.')
+      console.error('[CSRF] Rate limit aşıldı! CSRF token endpointine çok fazla istek atıldı.')
     } else {
       console.error('[CSRF] CSRF token alma hatası:', error)
     }
@@ -50,6 +53,16 @@ api.interceptors.request.use(
                           config.url?.includes('/auth/refresh-token') ||
                           config.url?.includes('/auth/logout') ||
                           config.url?.includes('/auth/confirm')
+    const isAdminEndpoint = config.url?.includes('/admin/')
+    
+    // Admin endpoint'leri için admin token'ını ekle
+    if (isAdminEndpoint && store) {
+      const adminToken = store.getState().adminAuth?.token
+      if (adminToken) {
+        config.headers['Authorization'] = `Bearer ${adminToken}`
+      }
+    }
+    
     if (needsCsrfToken && !isAuthEndpoint) {
       // Kuyruğa ekle, sırayla token kullan
       await (csrfQueue = csrfQueue.then(async () => {

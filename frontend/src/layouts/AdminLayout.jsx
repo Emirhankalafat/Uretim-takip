@@ -29,6 +29,7 @@ const AdminLayout = ({ children }) => {
     { name: 'Dashboard', href: '/admin', icon: ChartBarIcon },
     { name: 'Kullanıcı Yönetimi', href: '/admin/users', icon: UsersIcon },
     { name: 'Şirket Yönetimi', href: '/admin/companies', icon: BuildingOfficeIcon },
+    { name: 'Duyuru Yönetimi', href: '/admin/announcements', icon: DocumentTextIcon },
     { name: 'Sistem Logları', href: '/admin/logs', icon: DocumentTextIcon },
     { name: 'Ödemeler', href: '/admin/payments', icon: DocumentTextIcon },
   ];

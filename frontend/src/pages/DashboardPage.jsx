@@ -1,10 +1,13 @@
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
+import Announcements from '../components/Announcements'
+import { setProfile, setProfileLoading, setProfileError } from '../store/slices/profileSlice'
 
 const DashboardPage = () => {
   const { user } = useSelector((state) => state.auth)
+  const dispatch = useDispatch()
   const navigate = useNavigate()
   const [profileData, setProfileData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -19,14 +22,19 @@ const DashboardPage = () => {
     try {
       setLoading(true)
       setError(null)
+      dispatch(setProfileLoading(true))
+      
       // Kullanıcı bilgisi varsa profil verilerini çek
       if (user) {
         const response = await api.get('/auth/dashboard-profile')
         setProfileData(response.data.profile)
+        // Redux store'a da kaydet
+        dispatch(setProfile(response.data.profile))
       }
     } catch (error) {
       console.error('Dashboard profil verileri alınamadı:', error)
       setError('Dashboard verileri yüklenirken bir hata oluştu.')
+      dispatch(setProfileError(error.message))
     } finally {
       setLoading(false)
     }
@@ -346,51 +354,17 @@ const DashboardPage = () => {
             </div>
           </div>
         </div>
-        {/* Duyurular Alanı (placeholder) */}
+        {/* Duyurular Alanı */}
         <div className="bg-white shadow rounded-lg mt-8">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-medium text-gray-900">
               Duyurular
             </h3>
           </div>
-          <div className="px-6 py-4 text-gray-500 text-center">
-            <span className="text-4xl mb-4 block">📢</span>
-            <p>Henüz duyuru bulunmuyor.</p>
-            <p className="text-sm mt-2">Burada sistem duyuruları görünecek.</p>
-          </div>
+          <Announcements />
         </div>
 
-        {/* SuperAdmin için Şirket İsmini Düzenle butonu */}
-        {user?.is_SuperAdmin && (
-          <div className="mt-8 flex justify-end">
-            <button
-              onClick={() => navigate('/company-edit')}
-              className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-all shadow"
-            >
-              Şirket İsmini Düzenle
-            </button>
-          </div>
-        )}
 
-        {/* API Key (Sadece SuperAdmin) */}
-        {user?.is_SuperAdmin && profileData?.api_key && (
-          <div className="mb-8 rounded-lg p-4 bg-yellow-50 border border-yellow-200 flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium text-yellow-800 mb-1">Şirket API Anahtarı</div>
-              <div className="font-mono text-yellow-900 break-all select-all text-xs bg-yellow-100 px-2 py-1 rounded">
-                {profileData.api_key}
-              </div>
-            </div>
-            <button
-              className="ml-4 px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-xs font-medium"
-              onClick={() => {
-                navigator.clipboard.writeText(profileData.api_key)
-              }}
-            >
-              Kopyala
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )
@@ -414,25 +388,7 @@ const DashboardPage = () => {
           )}
         </div>
 
-        {/* API Key (Sadece SuperAdmin) */}
-        {user?.is_SuperAdmin && profileData?.api_key && (
-          <div className="mb-8 rounded-lg p-4 bg-yellow-50 border border-yellow-200 flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium text-yellow-800 mb-1">Şirket API Anahtarı</div>
-              <div className="font-mono text-yellow-900 break-all select-all text-xs bg-yellow-100 px-2 py-1 rounded">
-                {profileData.api_key}
-              </div>
-            </div>
-            <button
-              className="ml-4 px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-xs font-medium"
-              onClick={() => {
-                navigator.clipboard.writeText(profileData.api_key)
-              }}
-            >
-              Kopyala
-            </button>
-          </div>
-        )}
+
 
         {/* Subscription Widget */}
         <SubscriptionWidget />
@@ -524,25 +480,13 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Duyurular Alanı (SuperAdmin için) */}
-        {user?.is_SuperAdmin && (
-          <div className="bg-white shadow rounded-lg mb-8">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Duyurular</h3>
-            </div>
-            <div className="px-6 py-4 text-gray-500 text-center">
-              <span className="text-4xl mb-4 block">📢</span>
-              <p>Henüz duyuru bulunmuyor.</p>
-              <p className="text-sm mt-2">Burada sistem duyuruları görünecek.</p>
-            </div>
-          </div>
-        )}
+
         {/* Küçük Yönlendirme Kutucukları */}
         {user?.is_SuperAdmin && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <button onClick={() => navigate('/company-edit')} className="flex flex-col items-center justify-center bg-primary-50 border border-primary-200 rounded-lg p-4 hover:bg-primary-100 transition">
+            <button onClick={() => navigate('/company/profile')} className="flex flex-col items-center justify-center bg-primary-50 border border-primary-200 rounded-lg p-4 hover:bg-primary-100 transition">
               <span className="text-2xl mb-2">🏢</span>
-              <span className="font-medium text-primary-800">Şirketi Düzenle</span>
+              <span className="font-medium text-primary-800">Şirket Profili</span>
             </button>
             <button onClick={() => navigate('/reports')} className="flex flex-col items-center justify-center bg-pink-50 border border-pink-200 rounded-lg p-4 hover:bg-pink-100 transition">
               <span className="text-2xl mb-2">📊</span>
@@ -558,6 +502,16 @@ const DashboardPage = () => {
             </button>
           </div>
         )}
+
+        {/* Duyurular Alanı - Admin Dashboard */}
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">
+              Duyurular
+            </h3>
+          </div>
+          <Announcements />
+        </div>
       </div>
     </div>
   )

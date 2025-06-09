@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { logout } from '../features/auth/authSlice';
-import { clearProfile } from '../features/profile/profileSlice';
 import authService from '../features/auth/services/authService';
 import usePermissions from '../hooks/usePermissions';
 import NotificationIcon from '../features/notifications/components/NotificationIcon';
@@ -25,7 +24,6 @@ const MainLayout = ({ children }) => {
       console.error('Logout hatası:', error);
     } finally {
       dispatch(logout());
-      dispatch(clearProfile());
       navigate('/login');
     }
   };

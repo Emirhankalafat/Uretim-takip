@@ -45,12 +45,16 @@ const AdminUsersPage = lazy(() => import('../features/admin/pages/AdminUsersPage
 const AdminCompaniesPage = lazy(() => import('../features/admin/pages/AdminCompaniesPage'))
 const AdminLogsPage = lazy(() => import('../features/admin/pages/AdminLogsPage'))
 const AdminPaymentsPage = lazy(() => import('../features/admin/pages/AdminPaymentsPage'))
+const AdminAnnouncementsPage = lazy(() => import('../features/admin/pages/AdminAnnouncementsPage'))
 
 // Reports Page
 const ReportsPage = lazy(() => import('../features/reports/pages/ReportsPage'))
 
-// Company Edit Page
-const CompanyEditPage = lazy(() => import('../features/company/pages/CompanyEditPage'))
+// Company Profile Page
+const CompanyProfilePage = lazy(() => import('../features/company/pages/CompanyProfilePage'))
+
+// Announcement Detail Page
+const AnnouncementDetailPage = lazy(() => import('../features/announcements/pages/AnnouncementDetailPage'))
 
 // Loading Component
 const LoadingScreen = ({ message = "Sayfa yükleniyor..." }) => {
@@ -442,6 +446,16 @@ const AppRoutes = () => {
         }
       />
       
+      {/* Admin Announcements Route */}
+      <Route
+        path="/admin/announcements"
+        element={
+          <AdminProtectedRoute>
+            <AdminAnnouncementsPage />
+          </AdminProtectedRoute>
+        }
+      />
+      
       {/* Reports Route */}
       <Route 
         path="/reports" 
@@ -452,15 +466,27 @@ const AppRoutes = () => {
         } 
       />
       
-      {/* Company Edit Route (SuperAdmin only) */}
+      {/* Company Profile Route */}
       <Route 
-        path="/company-edit" 
+        path="/company/profile" 
         element={
           <ProtectedRoute>
-            <CompanyEditPage />
+            <CompanyProfilePage />
           </ProtectedRoute>
         } 
       />
+      
+      {/* Announcement Detail Route */}
+      <Route 
+        path="/announcements/:announcementId" 
+        element={
+          <ProtectedRoute>
+            <AnnouncementDetailPage />
+          </ProtectedRoute>
+        } 
+      />
+      
+
       
       {/* 404 Route */}
       <Route 

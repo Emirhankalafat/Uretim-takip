@@ -29,6 +29,11 @@ const reportRoutes = require('./reports/reportRoutes');
 const notificationRoutes = require('./notifications/notification.routes');
 require('dotenv').config();
 
+// BigInt serialization için global fix
+BigInt.prototype.toJSON = function() {
+  return this.toString();
+};
+
 // Production modunu kontrol et
 const isProduction = process.env.NODE_ENV === 'production';
 app.set('trust proxy', 1);
@@ -174,7 +179,7 @@ app.get('/api/user/check-invite', checkInvite);
 app.post('/api/user/accept-invite', acceptInvite);
 
 // Payment routes - authentication logic payment/routes.js'de
-app.use('/api/payment', paymentRateLimiter, paymentRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Davet (invite) endpointi için rate limit (userRoutes.js'de /invite)
 app.use('/api/user/invite', inviteRateLimiter, userRoutes);
@@ -194,6 +199,13 @@ app.use('/api/orders', authenticateToken, csrfProtection, requireActiveSubscript
 app.use('/api/my-jobs', authenticateToken, csrfProtection, requireActiveSubscription, myJobsRoutes);
 app.use('/api/mcp', mcpRoutes);
 app.use('/api/notifications', authenticateToken, csrfProtection, requireActiveSubscription, notificationRoutes);
+
+// Admin CSRF token endpoint (auth gerektirmez)
+app.get('/api/admin/csrf-token', (req, res) => {
+  const crypto = require('crypto');
+  const csrfToken = crypto.randomBytes(32).toString('hex');
+  res.json({ csrfToken });
+});
 
 // Admin routes - authentication ve CSRF koruması gerekli
 app.use('/api/admin', authenticateSystemAdmin, adminRoutes);

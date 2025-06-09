@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateSystemAdmin } = require('../auth/middleware/authMiddleware');
+
+// CSRF token endpoint server.js'te ayrı olarak tanımlandı
 const { 
   getAllUsers, 
   toggleUserActive, 
@@ -8,7 +10,12 @@ const {
   getSystemLogs, 
   getCompanyDetails, 
   updateCompanySubscription, 
-  getSystemStats 
+  getSystemStats,
+  createAnnouncement,
+  getAllAnnouncements,
+  updateAnnouncement,
+  deleteAnnouncement,
+  getAnnouncementById
 } = require('./adminController');
 
 // Tüm admin routelar için önce admin authentication gerekli
@@ -28,5 +35,12 @@ router.get('/logs', getSystemLogs);
 
 // Sistem istatistikleri
 router.get('/stats', getSystemStats);
+
+// Duyuru yönetimi (Sadece admin panelinden)
+router.post('/announcements', createAnnouncement);
+router.get('/announcements', getAllAnnouncements);
+router.get('/announcements/:announcementId(\\d+)', getAnnouncementById);
+router.put('/announcements/:announcementId(\\d+)', updateAnnouncement);
+router.delete('/announcements/:announcementId(\\d+)', deleteAnnouncement);
 
 module.exports = router; 

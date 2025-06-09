@@ -13,7 +13,7 @@ router.post('/logout', logoutUser);
 router.get('/auth-status', authenticateToken, getAuthStatus);
 router.get('/profile', authenticateToken, getUserProfile);
 router.get('/dashboard-profile', authenticateToken, getDashboardProfile);
-router.get('/csrf-token', authenticateToken, getCsrfTokenEndpoint);
+router.get('/csrf-token', getCsrfTokenEndpoint);
 
 // Password reset endpoints
 router.post('/forgot-password', forgotPassword);

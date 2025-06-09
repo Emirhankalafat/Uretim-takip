@@ -32,6 +32,7 @@ model Company {
   orders                Orders[]
   products              Products[]
   users                 User[]
+  announcements         Announcements[]
   api_key               String?
 
   @@map("companies")
@@ -309,6 +310,25 @@ model SystemLog {
   user       User?    @relation(fields: [user_id], references: [id])
 }
 
+model Announcements {
+  id             BigInt   @id @default(autoincrement())
+  title          String
+  content        String
+  type           AnnouncementType @default(INFO)
+  isActive       Boolean  @default(true)
+  priority       Priority @default(NORMAL)
+  validUntil     DateTime?
+  targetUsers    String?  // JSON string for specific user targeting (null means all users)
+  createdBy      BigInt
+  company_id     BigInt?  // Opsiyonel - admin genel duyuru için
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  
+  company        Company? @relation(fields: [company_id], references: [id])
+
+  @@map("announcements")
+}
+
 enum OrderStatus {
   PENDING
   IN_PROGRESS
@@ -328,4 +348,13 @@ enum Priority {
   NORMAL
   HIGH
   URGENT
+}
+
+enum AnnouncementType {
+  INFO
+  WARNING
+  SUCCESS
+  ERROR
+  MAINTENANCE
+  UPDATE
 }
