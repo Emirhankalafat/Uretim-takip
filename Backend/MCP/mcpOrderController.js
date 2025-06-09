@@ -243,8 +243,7 @@ const createOrder = async (req, res) => {
         order: newOrder, 
         totalStepsCreated, 
         assignedUserIds: [...new Set(assignedUserIds)] // Tekrarları kaldır
-      };
-    });
+      };    });
 
     res.json({
       order: {
@@ -255,18 +254,6 @@ const createOrder = async (req, res) => {
       },
       totalStepsCreated: result.totalStepsCreated,
       assignedUsers: result.assignedUserIds.length
-    });
-  } catch (error) {
-    console.error("Sipariş oluşturma hatası:", error);
-    res.status(500).json({ error: "Sunucu hatası.", details: error.message });
-  }
-};res.json({
-      order: {
-        ...newOrder,
-        id: newOrder.id.toString(),
-        Company_id: newOrder.Company_id?.toString(),
-        Customer_id: newOrder.Customer_id?.toString()
-      }
     });
   } catch (error) {
     console.error("Sipariş oluşturma hatası:", error);
