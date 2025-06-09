@@ -100,6 +100,9 @@ const corsOptions = {
       'https://www.üretimgo.com',
       'https://xn--retimgo-m2a.com',
       'https://www.xn--retimgo-m2a.com',
+      // İyzico API origins
+      'https://sandbox-api.iyzipay.com',
+      'https://api.iyzipay.com',
       // Ek production domain'ler buraya eklenebilir
     ].filter(Boolean);
     
