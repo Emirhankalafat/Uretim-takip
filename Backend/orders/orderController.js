@@ -202,8 +202,17 @@ const createOrder = async (req, res) => {
     });
   } catch (error) {
     console.error('Sipariş oluşturma hatası:', error);
+    
+    // Özel hata mesajlarını frontend'e gönder
     if (error.message.includes('Ürün bulunamadı')) {
       res.status(404).json({ message: error.message });
+    } else if (error.message.includes('sorumlu kullanıcı seçilmedi') || 
+               error.message.includes('sorumlu kullanıcı tanımlanmamış')) {
+      res.status(400).json({ message: error.message });
+    } else if (error.message.includes('Kullanıcı limiti aşıldı')) {
+      res.status(400).json({ message: error.message });
+    } else if (error.message.includes('en az bir adımda sorumlu kullanıcı seçilmelidir')) {
+      res.status(400).json({ message: error.message });
     } else {
       res.status(500).json({ message: 'Sunucu hatası.' });
     }

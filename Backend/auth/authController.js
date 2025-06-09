@@ -1,6 +1,8 @@
 const bcrypt = require('bcryptjs');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { getPrismaClient, checkPrismaClient } = require('../utils/prismaClient');
+
+// Merkezi prisma client'ı al
+const prisma = getPrismaClient();
 require('dotenv').config();
 const { 
   createConfirmToken, 

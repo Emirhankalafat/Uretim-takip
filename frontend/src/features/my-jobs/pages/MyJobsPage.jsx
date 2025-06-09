@@ -275,11 +275,16 @@ const MyJobsPage = () => {
                             onClick={() => showJobDetails(job)}
                           >
                             <div className="flex items-start justify-between mb-2">
-                              <div>
-                                <h3 className="font-semibold text-gray-900">{job.step_name}</h3>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="font-semibold text-gray-900">{job.step_name}</h3>
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                                    {job.quantity || 1} adet
+                                  </span>
+                                </div>
                                 <p className="text-sm text-gray-600">Adım {job.step_number}</p>
                               </div>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>{job.status === 'WAITING' ? 'Bekliyor' : job.status === 'IN_PROGRESS' ? 'Devam Ediyor' : 'Tamamlandı'}</span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ml-2 ${getStatusColor(job.status)}`}>{job.status === 'WAITING' ? 'Bekliyor' : job.status === 'IN_PROGRESS' ? 'Devam Ediyor' : 'Tamamlandı'}</span>
                             </div>
                             <div className="space-y-1 mb-2">
                               <div className="flex items-center text-xs text-gray-600">
@@ -289,7 +294,10 @@ const MyJobsPage = () => {
                               <div className="flex items-center text-xs text-gray-600">
                                 <span className="w-4 h-4 mr-1">📦</span>
                                 <span>{job.product?.name || "Bilinmiyor"}</span>
-
+                              </div>
+                              <div className="flex items-center text-xs text-gray-600">
+                                <span className="w-4 h-4 mr-1">🔢</span>
+                                <span className="font-medium text-blue-600">{job.quantity || 1} adet</span>
                               </div>
                             </div>
                             <div className="text-xs text-gray-500">
@@ -313,7 +321,12 @@ const MyJobsPage = () => {
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">{selectedJob.step_name}</h2>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">{selectedJob.step_name}</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    <span className="font-medium text-blue-600">{selectedJob.quantity || 1} adet</span> {selectedJob.product?.name} için
+                  </p>
+                </div>
                 <button
                   onClick={() => setShowJobDetail(false)}
                   className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -338,7 +351,13 @@ const MyJobsPage = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ürün</label>
                   <div className="flex items-center space-x-2">
                     <p className="text-gray-900">{selectedJob.product?.name || "Bilinmiyor"}</p>
-
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Miktar</label>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-2xl font-bold text-blue-600">{selectedJob.quantity || 1}</span>
+                    <span className="text-gray-600">adet</span>
                   </div>
                 </div>
                 <div>

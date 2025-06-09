@@ -1,9 +1,14 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { getPrismaClient, checkPrismaClient } = require('../utils/prismaClient');
+
+// Merkezi prisma client'ı al
+const prisma = getPrismaClient();
 
 // Çalışanın kendi işlerini getirme (sırası gelenler ve gelecek işler)
 const getMyJobs = async (req, res) => {
   try {
+    // Prisma client kontrolü
+    checkPrismaClient(prisma);
+    
     const user_id = req.user.id;
     const company_id = req.user.company_id;
 
@@ -87,6 +92,17 @@ const getMyJobs = async (req, res) => {
           orderBy: { step_number: 'asc' }
         });
 
+        // Bu step'in ürününe ait quantity bilgisini al
+        const orderItem = await prisma.orderItems.findFirst({
+          where: {
+            Order_id: step.Order_id,
+            Product_id: step.Product_id
+          },
+          select: {
+            quantity: true
+          }
+        });
+
         // Tüm önceki step'ler tamamlandı mı?
         const allPreviousCompleted = previousSteps.every(
           prevStep => prevStep.status === 'COMPLETED' || prevStep.status === 'SKIPPED'
@@ -101,6 +117,7 @@ const getMyJobs = async (req, res) => {
           Order_id: step.Order_id.toString(),
           Product_id: step.Product_id.toString(),
           assigned_user: step.assigned_user.toString(),
+          quantity: orderItem?.quantity || 1, // Ürün miktarı
 
           isMyTurn,
           previousStepsCompleted: allPreviousCompleted,
@@ -121,30 +138,46 @@ const getMyJobs = async (req, res) => {
       })
     );
 
-    // Completed işleri formatla
-    const formattedCompletedJobs = completedSteps.map(step => ({
-      ...step,
-      id: step.id.toString(),
-      Order_id: step.Order_id.toString(),
-      Product_id: step.Product_id.toString(),
-      assigned_user: step.assigned_user.toString(),
-      
-      isMyTurn: true, // Tamamlanan işler için her zaman true
-      previousStepsCompleted: true,
-      order: step.order ? {
-        ...step.order,
-        id: step.order.id?.toString(),
-        notes: step.order.notes || '',
-        customer: step.order.customer ? {
-          ...step.order.customer,
-          id: step.order.customer.id?.toString()
-        } : { Name: 'Stok' }
-      } : null,
-      product: step.product ? {
-        ...step.product,
-        id: step.product.id?.toString()
-      } : null
-    }));
+    // Completed işleri formatla - quantity bilgisi ile
+    const formattedCompletedJobs = await Promise.all(
+      completedSteps.map(async (step) => {
+        // Bu step'in ürününe ait quantity bilgisini al
+        const orderItem = await prisma.orderItems.findFirst({
+          where: {
+            Order_id: step.Order_id,
+            Product_id: step.Product_id
+          },
+          select: {
+            quantity: true
+          }
+        });
+
+        return {
+          ...step,
+          id: step.id.toString(),
+          Order_id: step.Order_id.toString(),
+          Product_id: step.Product_id.toString(),
+          assigned_user: step.assigned_user.toString(),
+          quantity: orderItem?.quantity || 1, // Ürün miktarı
+          
+          isMyTurn: true, // Tamamlanan işler için her zaman true
+          previousStepsCompleted: true,
+          order: step.order ? {
+            ...step.order,
+            id: step.order.id?.toString(),
+            notes: step.order.notes || '',
+            customer: step.order.customer ? {
+              ...step.order.customer,
+              id: step.order.customer.id?.toString()
+            } : { Name: 'Stok' }
+          } : null,
+          product: step.product ? {
+            ...step.product,
+            id: step.product.id?.toString()
+          } : null
+        };
+      })
+    );
 
     // Sırası gelenler ve gelecek işler olarak ayır
     const currentJobs = activeJobsWithStatus.filter(job => 
@@ -184,6 +217,9 @@ const getMyJobs = async (req, res) => {
 // Belirli bir job'ın detayını getirme
 const getMyJobDetail = async (req, res) => {
   try {
+    // Prisma client kontrolü
+    checkPrismaClient(prisma);
+    
     const { stepId } = req.params;
     const user_id = req.user.id;
     const company_id = req.user.company_id;
@@ -210,6 +246,17 @@ const getMyJobDetail = async (req, res) => {
       return res.status(404).json({ message: 'İş bulunamadı veya size atanmamış.' });
     }
 
+    // Bu step'in ürününe ait quantity bilgisini al
+    const orderItem = await prisma.orderItems.findFirst({
+      where: {
+        Order_id: jobDetail.Order_id,
+        Product_id: jobDetail.Product_id
+      },
+      select: {
+        quantity: true
+      }
+    });
+
     // Önceki step'lerin durumunu kontrol et
     const previousSteps = await prisma.orderSteps.findMany({
       where: {
@@ -235,6 +282,7 @@ const getMyJobDetail = async (req, res) => {
       Order_id: jobDetail.Order_id?.toString(),
       Product_id: jobDetail.Product_id?.toString(),
       assigned_user: jobDetail.assigned_user?.toString(),
+      quantity: orderItem?.quantity || 1, // Ürün miktarı
 
       isMyTurn: allPreviousCompleted,
       order: jobDetail.order ? {
@@ -281,6 +329,9 @@ const getMyJobDetail = async (req, res) => {
 // Job'ı başlatma
 const startMyJob = async (req, res) => {
   try {
+    // Prisma client kontrolü
+    checkPrismaClient(prisma);
+    
     const { stepId } = req.params;
     const user_id = req.user.id;
     const company_id = req.user.company_id;
@@ -354,6 +405,9 @@ const startMyJob = async (req, res) => {
 // Job'ı tamamlama
 const completeMyJob = async (req, res) => {
   try {
+    // Prisma client kontrolü
+    checkPrismaClient(prisma);
+    
     const { stepId } = req.params;
     const { notes } = req.body;
     const user_id = req.user.id;
@@ -423,6 +477,9 @@ const completeMyJob = async (req, res) => {
 // Job'a not ekleme/güncelleme
 const updateMyJobNotes = async (req, res) => {
   try {
+    // Prisma client kontrolü
+    checkPrismaClient(prisma);
+    
     const { stepId } = req.params;
     const { notes } = req.body;
     const user_id = req.user.id;

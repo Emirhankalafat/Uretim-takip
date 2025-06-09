@@ -7,7 +7,7 @@ const getPrismaClient = () => {
   if (!prisma) {
     try {
       prisma = new PrismaClient({
-        log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+        log: ['error'], // Sadece error logları
       });
       console.log('Prisma client başarıyla oluşturuldu');
     } catch (error) {
