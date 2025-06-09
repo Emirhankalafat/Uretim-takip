@@ -1,6 +1,9 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const helmet = require('helmet');
+const { sanitizeMiddleware } = require('./utils/security');
+const { httpsRedirect, securityHeaders, validateSSLConfig, createHTTPSServer } = require('./config/ssl');
 const app = express();
 const authRoutes = require('./auth/authRoutes');
 const permissionRoutes = require('./permission/permissionRoutes');
@@ -38,10 +41,45 @@ BigInt.prototype.toJSON = function() {
 const isProduction = process.env.NODE_ENV === 'production';
 app.set('trust proxy', 1);
 
+// SSL konfigürasyonunu kontrol et
+validateSSLConfig();
+
+// HTTPS yönlendirme (production için)
+app.use(httpsRedirect);
+
+// Ek güvenlik header'ları
+app.use(securityHeaders);
+
+// Security middleware - Helmet ile güvenlik header'ları
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // İyzico 3D Secure için gerekli
+  hsts: {
+    maxAge: 31536000, // 1 yıl
+    includeSubDomains: true,
+    preload: true
+  }
+}));
+
 // JSON ve URL encoded body parser - CORS'tan önce
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' })); // JSON body size limit
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+
+// Input sanitization middleware - tüm gelen veriler için
+app.use(sanitizeMiddleware);
 
 // İyzico 3D Secure callback - Body parser'dan sonra, CORS'tan ÖNCE tanımla
 app.options('/api/payment/3dsecure/callback', (req, res) => {
@@ -100,13 +138,14 @@ function logRateLimit(req, key, message) {
 
 // Rate limit middleware (Redis tabanlı)
 const authRateLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 dakika
-  max: 50, // 5 dakikada 50 istek (daha fazla)
+  windowMs: 15 * 60 * 1000, // 15 dakika
+  max: 25, // 15 dakikada 25 istek (daha sıkı güvenlik)
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     status: 429,
-    message: 'Çok fazla istek yaptınız. Lütfen daha sonra tekrar deneyin.'
+    message: 'Çok fazla authentication isteği yaptınız. Lütfen 15 dakika sonra tekrar deneyin.',
+    retryAfter: 15 * 60 // saniye cinsinden
   },
   store: new RedisStore({
     sendCommand: async (...args) => redisClient.sendCommand(args)
@@ -244,16 +283,33 @@ async function startServer() {
     // Redis bağlantısını başlat
     await connectRedis();
     
-    // Server'ı başlat
-    app.listen(PORT, () => {
-      console.log(`🚀 Server ${PORT} portunda çalışıyor.`);
-      if (isProduction) {
-        console.log(`🌐 Production modda çalışıyor - API Sunucusu`);
-        console.log(`🔗 API: http://localhost:${PORT}/api`);
+    // Production'da HTTPS kullan
+    if (isProduction) {
+      const httpsServer = createHTTPSServer(app);
+      
+      if (httpsServer) {
+        httpsServer.listen(PORT, () => {
+          console.log(`🚀 HTTPS Server ${PORT} portunda çalışıyor.`);
+          console.log(`🔗 API: https://localhost:${PORT}/api`);
+          console.log(`🔒 SSL/TLS aktif`);
+        });
       } else {
-        console.log(`🌐 Development modda - CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
+        // SSL başarısız olursa HTTP fallback
+        console.warn('⚠️ SSL başarısız, HTTP fallback kullanılıyor');
+        app.listen(PORT, () => {
+          console.log(`🚀 HTTP Server ${PORT} portunda çalışıyor (SSL başarısız).`);
+          console.log(`🔗 API: http://localhost:${PORT}/api`);
+          console.warn('🔓 PRODUCTION ortamında HTTP kullanımı güvenli değil!');
+        });
       }
-    });
+    } else {
+      // Development ortamında HTTP
+      app.listen(PORT, () => {
+        console.log(`🚀 Server ${PORT} portunda çalışıyor.`);
+        console.log(`🔗 API: http://localhost:${PORT}/api`);
+        console.log(`🌐 Development modda - CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
+      });
+    }
   } catch (error) {
     console.error('❌ Server başlatma hatası:', error);
     process.exit(1);

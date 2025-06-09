@@ -29,13 +29,17 @@ const csrfProtection = (req, res, next) => {
 
   // Method kontrolü
   if (exemptMethods.includes(req.method)) {
-    console.log(`[CSRF] Muaf method: ${req.method} ${req.path}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[CSRF] Muaf method: ${req.method} ${req.path}`);
+    }
     return next();
   }
 
   // Path kontrolü
   if (exemptPaths.includes(req.path)) {
-    console.log(`[CSRF] Muaf endpoint: ${req.method} ${req.path}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[CSRF] Muaf endpoint: ${req.method} ${req.path}`);
+    }
     return next();
   }
 
@@ -62,7 +66,7 @@ const csrfProtection = (req, res, next) => {
   verifyCsrfToken(userId, csrfToken)
     .then(async (isValid) => {
       if (!isValid) {
-        console.warn(`[CSRF] Geçersiz token! userId: ${userId}, token: ${csrfToken.substring(0, 16)}..., ${req.method} ${req.path}`);
+        console.warn(`[CSRF] Geçersiz token! userId: ${userId}, token: ${csrfToken.substring(0, 8)}..., ${req.method} ${req.path}`);
         return res.status(403).json({ 
           message: 'Geçersiz CSRF token. Lütfen sayfayı yenileyin.' 
         });
@@ -71,7 +75,11 @@ const csrfProtection = (req, res, next) => {
       try {
         const newCsrfToken = await refreshCsrfToken(userId);
         res.setHeader('X-New-CSRF-Token', newCsrfToken);
-        console.log(`[CSRF] Token doğrulandı ve yenilendi! userId: ${userId}, eski: ${csrfToken.substring(0, 16)}..., yeni: ${newCsrfToken.substring(0, 16)}..., ${req.method} ${req.path}`);
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[CSRF] Token doğrulandı ve yenilendi! userId: ${userId}, eski: ${csrfToken.substring(0, 8)}..., yeni: ${newCsrfToken.substring(0, 8)}..., ${req.method} ${req.path}`);
+        }
+        
         req.newCsrfToken = newCsrfToken;
         next();
       } catch (error) {

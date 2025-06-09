@@ -16,7 +16,12 @@ async function createCsrfToken(userId, sessionTTL = 24 * 60 * 60) { // Default 1
     const token = crypto.randomBytes(32).toString('hex');
     const key = `csrf:${userId}`;
     await redisClient.setEx(key, sessionTTL, token);
-    console.log(`[CSRF] [create] userId: ${userId}, token: ${token.substring(0, 16)}..., TTL: ${sessionTTL}s`);
+    
+    // Only log in development mode and don't expose full token
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[CSRF] [create] userId: ${userId}, token: ${token.substring(0, 8)}..., TTL: ${sessionTTL}s`);
+    }
+    
     return token;
   } catch (error) {
     console.error(`[CSRF] [create] HATA! userId: ${userId}`, error);
@@ -39,7 +44,12 @@ async function verifyCsrfToken(userId, token) {
       return false;
     }
     const isValid = storedToken === token;
-    console.log(`[CSRF] [verify] userId: ${userId}, token: ${token.substring(0, 16)}..., isValid: ${isValid}`);
+    
+    // Only log in development mode and don't expose full token
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[CSRF] [verify] userId: ${userId}, token: ${token.substring(0, 8)}..., isValid: ${isValid}`);
+    }
+    
     return isValid;
   } catch (error) {
     console.error(`[CSRF] [verify] HATA! userId: ${userId}`, error);
@@ -56,7 +66,12 @@ async function verifyCsrfToken(userId, token) {
 async function refreshCsrfToken(userId, sessionTTL = 24 * 60 * 60) {
   try {
     const newToken = await createCsrfToken(userId, sessionTTL);
-    console.log(`[CSRF] [refresh] userId: ${userId}, newToken: ${newToken.substring(0, 16)}...`);
+    
+    // Only log in development mode and don't expose full token
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[CSRF] [refresh] userId: ${userId}, newToken: ${newToken.substring(0, 8)}...`);
+    }
+    
     return newToken;
   } catch (error) {
     console.error(`[CSRF] [refresh] HATA! userId: ${userId}`, error);
@@ -89,7 +104,12 @@ async function getCsrfToken(userId) {
   try {
     const key = `csrf:${userId}`;
     const token = await redisClient.get(key);
-    console.log(`[CSRF] [get] userId: ${userId}, token: ${token ? token.substring(0, 16) + '...' : 'YOK'}`);
+    
+    // Only log in development mode and don't expose full token
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[CSRF] [get] userId: ${userId}, token: ${token ? token.substring(0, 8) + '...' : 'YOK'}`);
+    }
+    
     return token;
   } catch (error) {
     console.error(`[CSRF] [get] HATA! userId: ${userId}`, error);
