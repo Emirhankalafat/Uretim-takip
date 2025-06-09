@@ -110,8 +110,8 @@ const createOrder = async (req, res) => {
   try {
     const { api_key, Customer_id, order_number, priority = "NORMAL", deadline, notes = "", is_stock = false } = req.body;
 
-    if (!api_key || !order_number) {
-      return res.status(400).json({ error: "api_key ve order_number zorunludur." });
+    if (!api_key) {
+      return res.status(400).json({ error: "api_key zorunludur." });
     }
 
     const company = await prisma.company.findFirst({
@@ -122,19 +122,59 @@ const createOrder = async (req, res) => {
       return res.status(403).json({ error: "Geçersiz API key." });
     }
 
+    // Otomatik sipariş numarası oluştur (eğer verilmemişse)
+    let finalOrderNumber = order_number;
+    if (!finalOrderNumber) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      
+      // Aynı gün içindeki sipariş sayısını bul
+      const startOfDay = new Date(year, now.getMonth(), now.getDate());
+      const endOfDay = new Date(year, now.getMonth(), now.getDate() + 1);
+      
+      const todayOrderCount = await prisma.orders.count({
+        where: {
+          Company_id: company.id,
+          created_at: {
+            gte: startOfDay,
+            lt: endOfDay
+          }
+        }
+      });
+
+      // Sipariş numarasını is_stock durumuna göre oluştur
+      const orderPrefix = is_stock ? 'STK' : 'SIP';
+      finalOrderNumber = `${orderPrefix}-${year}${month}${day}-${String(todayOrderCount + 1).padStart(3, '0')}`;
+    }
+
+    // Stok siparişi değilse müşteri kontrolü
+    if (!is_stock && Customer_id) {
+      const customer = await prisma.customers.findFirst({
+        where: {
+          id: BigInt(Customer_id),
+          Company_Id: company.id
+        }
+      });
+      
+      if (!customer) {
+        return res.status(404).json({ error: "Müşteri bulunamadı." });
+      }
+    }
+
     const newOrder = await prisma.orders.create({
       data: {
         Company_id: company.id,
         Customer_id: Customer_id ? BigInt(Customer_id) : null,
-        order_number,
+        order_number: finalOrderNumber,
         priority,
         deadline: deadline ? new Date(deadline) : null,
         notes,
-        is_stock
+        is_stock,
+        status: 'PENDING'
       }
-    });
-
-    res.json({
+    });    res.json({
       order: {
         ...newOrder,
         id: newOrder.id.toString(),

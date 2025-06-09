@@ -130,6 +130,24 @@ const authenticateApiKey = async (req, res, next) => {
       return res.status(403).json({ message: 'Geçersiz API key' });
     }
 
+    // Abonelik paketi kontrolü - sadece trial ve premium kullanıcılar MCP'ye erişebilir
+    if (company.Suspscription_package === 'basic') {
+      return res.status(403).json({ 
+        error: 'MCP erişimi için premium veya trial üyelik gereklidir.',
+        error_code: 'MCP_SUBSCRIPTION_REQUIRED',
+        current_package: 'basic'
+      });
+    }
+
+    // Trial veya premium değilse de reddet
+    if (company.Suspscription_package !== 'trial' && company.Suspscription_package !== 'premium') {
+      return res.status(403).json({ 
+        error: 'Geçersiz abonelik paketi.',
+        error_code: 'INVALID_PACKAGE',
+        current_package: company.Suspscription_package
+      });
+    }
+
     // Controller tarafında erişmek için
     req.company = {
       id: Number(company.id),
