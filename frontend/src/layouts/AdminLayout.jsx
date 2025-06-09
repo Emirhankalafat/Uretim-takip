@@ -10,6 +10,7 @@ import {
   BuildingOfficeIcon,
   DocumentTextIcon,
   ArrowLeftOnRectangleIcon,
+  CpuChipIcon,
 } from '@heroicons/react/24/outline';
 import { adminLogout } from '../features/admin/adminAuthSlice';
 import api from '../services/api';
@@ -23,14 +24,13 @@ const AdminLayout = ({ children }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const navigation = [
+  const [sidebarOpen, setSidebarOpen] = useState(false);  const navigation = [
     { name: 'Dashboard', href: '/admin', icon: ChartBarIcon },
     { name: 'Kullanıcı Yönetimi', href: '/admin/users', icon: UsersIcon },
     { name: 'Şirket Yönetimi', href: '/admin/companies', icon: BuildingOfficeIcon },
     { name: 'Duyuru Yönetimi', href: '/admin/announcements', icon: DocumentTextIcon },
     { name: 'Sistem Logları', href: '/admin/logs', icon: DocumentTextIcon },
+    { name: 'Sistem İzleme', href: '/admin/monitoring', icon: CpuChipIcon },
     { name: 'Ödemeler', href: '/admin/payments', icon: DocumentTextIcon },
   ];
 

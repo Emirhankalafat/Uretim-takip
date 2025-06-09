@@ -1,7 +1,9 @@
 const iyzipay = require('../config/iyzico');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { getPrismaClient, checkPrismaClient } = require('../utils/prismaClient');
 const { sendPaymentSuccessEmail } = require('../auth/utils/emailUtils');
+
+// Merkezi prisma client'ı al
+const prisma = getPrismaClient();
 
 class PaymentController {
   /**

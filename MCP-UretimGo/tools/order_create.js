@@ -19,7 +19,7 @@ export default {
       const apiKey = env?.API_KEY;
       if (!apiKey) throw new Error("API_KEY ortam değişkeni eksik.");
 
-      const res = await fetch("https://uretimgo.com/api/mcp/orders/create", {
+      const res = await fetch("https://üretimgo.com/api/mcp/orders/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ api_key: apiKey, notes })

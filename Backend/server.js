@@ -7,6 +7,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const { sanitizeMiddleware } = require('./utils/security');
 const { httpsRedirect, securityHeaders, validateSSLConfig, createHTTPSServer } = require('./config/ssl');
+const smartLogger = require('./utils/smartLogger');
 const app = express();
 const authRoutes = require('./auth/authRoutes');
 const permissionRoutes = require('./permission/permissionRoutes');
@@ -22,7 +23,7 @@ const adminRoutes = require('./admin/adminRoutes');
 const mcpRoutes = require('./MCP/mcpRouter');
 const { startTokenCleanupScheduler } = require('./auth/utils/scheduler');
 const { authenticateToken, authenticateSystemAdmin, requireActiveSubscription } = require('./auth/middleware/authMiddleware');
-const { csrfProtection } = require('./auth/middleware/csrfMiddleware');
+const { csrfProtection, adminCsrfProtection } = require('./auth/middleware/csrfMiddleware');
 const { connectRedis } = require('./config/redis');
 const { checkInvite, acceptInvite } = require('./user/userController');
 const cron = require('node-cron');
@@ -249,7 +250,34 @@ app.get('/api/admin/csrf-token', (req, res) => {
 });
 
 // Admin routes - authentication ve CSRF koruması gerekli
-app.use('/api/admin', authenticateSystemAdmin, adminRoutes);
+app.use('/api/admin', authenticateSystemAdmin, adminCsrfProtection, adminRoutes);
+
+// Log monitoring endpoint
+app.get('/api/admin/logs/stats', authenticateSystemAdmin, (req, res) => {
+  const stats = smartLogger.getStats();
+  res.json({
+    status: 'ok',
+    logging: stats,
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Performance monitoring endpoint  
+app.get('/api/health/performance', (req, res) => {
+  const stats = {
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    logging: smartLogger.getStats()
+  };
+  
+  res.json({
+    status: 'ok',
+    stats
+  });
+});
 
 // Token yönetim scheduler'ını başlat
 // Sadece revoke et (önerilen)

@@ -46,6 +46,7 @@ const AdminCompaniesPage = lazy(() => import('../features/admin/pages/AdminCompa
 const AdminLogsPage = lazy(() => import('../features/admin/pages/AdminLogsPage'))
 const AdminPaymentsPage = lazy(() => import('../features/admin/pages/AdminPaymentsPage'))
 const AdminAnnouncementsPage = lazy(() => import('../features/admin/pages/AdminAnnouncementsPage'))
+const SystemMonitoringPage = lazy(() => import('../features/admin/pages/SystemMonitoringPage'))
 
 // Reports Page
 const ReportsPage = lazy(() => import('../features/reports/pages/ReportsPage'))
@@ -452,6 +453,16 @@ const AppRoutes = () => {
         element={
           <AdminProtectedRoute>
             <AdminAnnouncementsPage />
+          </AdminProtectedRoute>
+        }
+      />
+      
+      {/* Admin Monitoring Route */}
+      <Route
+        path="/admin/monitoring"
+        element={
+          <AdminProtectedRoute>
+            <SystemMonitoringPage />
           </AdminProtectedRoute>
         }
       />

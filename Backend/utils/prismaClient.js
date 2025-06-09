@@ -6,12 +6,46 @@ let prisma = null;
 const getPrismaClient = () => {
   if (!prisma) {
     try {
+      // Log level'ı daha akıllı ayarla
+      const logLevel = process.env.PRISMA_LOG_LEVEL || 
+                      (process.env.NODE_ENV === 'production' ? 'error' : 'warn');
+      
       prisma = new PrismaClient({
-        log: ['error'], // Sadece error logları
+        log: [
+          { emit: 'event', level: 'query' },
+          { emit: 'stdout', level: 'error' },
+          { emit: 'stdout', level: 'warn' }
+        ],
+        datasources: {
+          db: {
+            url: process.env.DATABASE_URL
+          }
+        }
       });
-      console.log('Prisma client başarıyla oluşturuldu');
+      
+      // Sadece yavaş sorguları logla (development'ta)
+      if (process.env.NODE_ENV === 'development') {
+        prisma.$on('query', (e) => {
+          const duration = e.duration;
+          
+          // Sadece 500ms'den uzun sorguları logla
+          if (duration > 500) {
+            const queryPreview = e.query.substring(0, 80).replace(/\s+/g, ' ');
+            console.warn(`🐌 Slow query: ${duration}ms - ${queryPreview}...`);
+          }
+          
+          // Çok yavaş sorguları (2s+) detaylı logla
+          if (duration > 2000) {
+            console.error(`🚨 Very slow query: ${duration}ms`);
+            console.error(`Query: ${e.query}`);
+            console.error(`Params: ${JSON.stringify(e.params)}`);
+          }
+        });
+      }
+      
+      console.log('✅ Prisma client başarıyla oluşturuldu');
     } catch (error) {
-      console.error('Prisma client oluşturulurken hata:', error);
+      console.error('❌ Prisma client oluşturulurken hata:', error);
       throw error;
     }
   }

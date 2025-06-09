@@ -29,7 +29,8 @@ const csrfProtection = (req, res, next) => {
 
   // Method kontrolü
   if (exemptMethods.includes(req.method)) {
-    if (process.env.NODE_ENV === 'development') {
+    // Sadece kritik durumlarda log
+    if (process.env.CSRF_DEBUG === 'true') {
       console.log(`[CSRF] Muaf method: ${req.method} ${req.path}`);
     }
     return next();
@@ -37,7 +38,7 @@ const csrfProtection = (req, res, next) => {
 
   // Path kontrolü
   if (exemptPaths.includes(req.path)) {
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.CSRF_DEBUG === 'true') {
       console.log(`[CSRF] Muaf endpoint: ${req.method} ${req.path}`);
     }
     return next();
@@ -76,7 +77,8 @@ const csrfProtection = (req, res, next) => {
         const newCsrfToken = await refreshCsrfToken(userId);
         res.setHeader('X-New-CSRF-Token', newCsrfToken);
         
-        if (process.env.NODE_ENV === 'development') {
+        // Sadece debug mode'da detaylı log
+        if (process.env.CSRF_DEBUG === 'true') {
           console.log(`[CSRF] Token doğrulandı ve yenilendi! userId: ${userId}, eski: ${csrfToken.substring(0, 8)}..., yeni: ${newCsrfToken.substring(0, 8)}..., ${req.method} ${req.path}`);
         }
         
@@ -113,7 +115,81 @@ const csrfProtectionForPaths = (protectedPaths = []) => {
   };
 };
 
+/**
+ * Admin endpoint'leri için özelleştirilmiş CSRF koruması
+ */
+const adminCsrfProtection = (req, res, next) => {
+  // Admin exempt paths
+  const adminExemptPaths = [
+    '/api/admin/csrf-token'
+  ];
+
+  // Exempt methods
+  const exemptMethods = ['GET', 'HEAD', 'OPTIONS'];
+
+  // Method kontrolü
+  if (exemptMethods.includes(req.method)) {
+    return next();
+  }
+
+  // Path kontrolü
+  if (adminExemptPaths.includes(req.path)) {
+    return next();
+  }
+
+  // Admin bilgisi var mı kontrol et
+  const adminId = req.systemAdmin?.id;
+  if (!adminId) {
+    return res.status(401).json({ 
+      message: 'Admin bilgisi bulunamadı. Lütfen giriş yapın.' 
+    });
+  }
+
+  // Admin CSRF token prefix'i kullan
+  const prefixedAdminId = `admin_${adminId}`;
+
+  // CSRF token'ı header'dan al
+  const csrfToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];
+
+  if (!csrfToken) {
+    return res.status(403).json({ 
+      message: 'CSRF token bulunamadı. Lütfen sayfayı yenileyin.' 
+    });
+  }
+
+  // CSRF token'ı doğrula
+  verifyCsrfToken(prefixedAdminId, csrfToken)
+    .then(async (isValid) => {
+      if (!isValid) {
+        return res.status(403).json({ 
+          message: 'Geçersiz CSRF token. Lütfen sayfayı yenileyin.' 
+        });
+      }
+
+      // Token geçerli, yeni token oluştur ve response header'ına ekle
+      try {
+        const newCsrfToken = await refreshCsrfToken(prefixedAdminId);
+        res.setHeader('X-New-CSRF-Token', newCsrfToken);
+        
+        req.newCsrfToken = newCsrfToken;
+        next();
+      } catch (error) {
+        console.error(`[ADMIN CSRF] Token yenileme hatası! adminId: ${adminId}`, error);
+        return res.status(500).json({ 
+          message: 'CSRF token yenileme hatası.' 
+        });
+      }
+    })
+    .catch((error) => {
+      console.error(`[ADMIN CSRF] Token doğrulama hatası! adminId: ${adminId}`, error);
+      return res.status(500).json({ 
+        message: 'CSRF token doğrulama hatası.' 
+      });
+    });
+};
+
 module.exports = { 
   csrfProtection,
-  csrfProtectionForPaths
-}; 
+  csrfProtectionForPaths,
+  adminCsrfProtection
+};

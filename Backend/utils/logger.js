@@ -1,19 +1,39 @@
 const { createLogger, format, transports } = require('winston');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { getPrismaClient, checkPrismaClient } = require('./prismaClient');
+
+// Merkezi prisma client'ı al
+const prisma = getPrismaClient();
 
 const logger = createLogger({
-  level: 'info',
+  level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'error' : 'info'),
   format: format.combine(
     format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     format.printf(({ timestamp, level, message, ...meta }) => {
-      return `${timestamp} [${level.toUpperCase()}]: ${message} ${Object.keys(meta).length ? JSON.stringify(meta) : ''}`;
+      const metaStr = Object.keys(meta).length ? JSON.stringify(meta) : '';
+      return `${timestamp} [${level.toUpperCase()}]: ${message} ${metaStr}`;
     })
   ),
   transports: [
-    new transports.Console(),
-    new transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new transports.File({ filename: 'logs/combined.log' })
+    // Console transport - production'da sadece error
+    new transports.Console({
+      level: process.env.NODE_ENV === 'production' ? 'error' : 'info',
+      format: format.combine(
+        format.colorize(),
+        format.simple()
+      )
+    }),
+    // File transports
+    new transports.File({ 
+      filename: 'logs/error.log', 
+      level: 'error',
+      maxsize: 5242880, // 5MB
+      maxFiles: 5
+    }),
+    new transports.File({ 
+      filename: 'logs/combined.log',
+      maxsize: 5242880, // 5MB  
+      maxFiles: 5
+    })
   ]
 });
 

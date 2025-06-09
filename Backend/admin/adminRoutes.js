@@ -15,7 +15,8 @@ const {
   getAllAnnouncements,
   updateAnnouncement,
   deleteAnnouncement,
-  getAnnouncementById
+  getAnnouncementById,
+  getSystemMonitoring // Yeni import
 } = require('./adminController');
 
 // Tüm admin routelar için önce admin authentication gerekli
@@ -43,4 +44,7 @@ router.get('/announcements/:announcementId(\\d+)', getAnnouncementById);
 router.put('/announcements/:announcementId(\\d+)', updateAnnouncement);
 router.delete('/announcements/:announcementId(\\d+)', deleteAnnouncement);
 
-module.exports = router; 
+// Sistem monitoring
+router.get('/monitoring', getSystemMonitoring);
+
+module.exports = router;
