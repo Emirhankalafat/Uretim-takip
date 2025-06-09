@@ -44,6 +44,12 @@ BigInt.prototype.toJSON = function() {
 const isProduction = process.env.NODE_ENV === 'production';
 app.set('trust proxy', 1);
 
+// Environment debug bilgisi
+console.log('🔍 Environment Debug:');
+console.log('  NODE_ENV:', process.env.NODE_ENV);
+console.log('  isProduction:', isProduction);
+console.log('  FRONTEND_URL:', process.env.FRONTEND_URL);
+
 // SSL konfigürasyonunu kontrol et
 validateSSLConfig();
 
@@ -78,22 +84,42 @@ app.use(helmet({
 
 // CORS ayarları - DİĞER MIDDLEWARE'LERDEN ÖNCE
 const corsOptions = {
-  origin: isProduction
-    ? function (origin, callback) {
-        const allowedOrigins = [
-          process.env.FRONTEND_URL,
-          'https://üretimgo.com',
-          'https://www.üretimgo.com',
-          'https://xn--retimgo-m2a.com',
-          'https://www.xn--retimgo-m2a.com'
-        ].filter(Boolean);
-        if (!origin || allowedOrigins.includes(origin)) {
-          callback(null, true);
-        } else {
-          callback(new Error('Not allowed by CORS'));
-        }
-      }
-    : 'http://localhost:5173',
+  origin: function (origin, callback) {
+    // Development modunda tüm origin'lere izin ver
+    if (!isProduction) {
+      console.log('Development mode - allowing all origins. Origin:', origin);
+      return callback(null, true);
+    }
+    
+    // Production modunda sadece belirli domain'lere izin ver
+    console.log('CORS Origin Check:', { origin, isProduction, env: process.env.NODE_ENV });
+    
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,
+      'https://üretimgo.com',
+      'https://www.üretimgo.com',
+      'https://xn--retimgo-m2a.com',
+      'https://www.xn--retimgo-m2a.com',
+      // Ek production domain'ler buraya eklenebilir
+    ].filter(Boolean);
+    
+    console.log('Allowed Origins:', allowedOrigins);
+    
+    // Server-to-server istekler için origin olmayabilir (API callbacks, webhooks)
+    if (!origin) {
+      console.log('No origin header - allowing request (likely server-to-server)');
+      return callback(null, true);
+    }
+    
+    // Origin kontrolü
+    if (allowedOrigins.includes(origin)) {
+      console.log('Origin allowed:', origin);
+      return callback(null, true);
+    } else {
+      console.warn('Origin NOT allowed:', origin);
+      return callback(new Error(`CORS: Origin ${origin} not allowed`));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
