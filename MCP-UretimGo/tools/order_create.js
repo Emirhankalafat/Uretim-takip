@@ -2,7 +2,7 @@ import fetch from "node-fetch";
 
 export default {
   name: "order_create",
-  description: "Yeni bir sipariş oluşturur. Müşteri seçmek için customers_list, ürün seçmek için products_list, kullanıcı seçmek için users_list kullanabilirsin.",
+  description: "Yeni bir sipariş oluşturur. Müşteri seçmek için customers_list, ürün seçmek için products_list, kullanıcı seçmek için users_list kullanabilirsin. Ürün eklersen otomatik olarak o ürünün adımları oluşturulur ve sorumlu kullanıcılara atanır.",
   inputSchema: {
     type: "object",
     properties: {
@@ -27,16 +27,34 @@ export default {
         type: "string",
         description: "Sipariş notları (isteğe bağlı)",
         default: ""
-      },
-      is_stock: {
+      },      is_stock: {
         type: "boolean",
         description: "Stok siparişi mi? (true=stok siparişi, false=müşteri siparişi)",
         default: false
-      }    },
+      },
+      products: {
+        type: "array",
+        description: "Sipariş ürünleri (isteğe bağlı). products_list ile ürün ID'lerini görebilirsin.",
+        items: {
+          type: "object",
+          properties: {
+            product_id: {
+              type: "string",
+              description: "Ürün ID"
+            },
+            quantity: {
+              type: "number",
+              description: "Miktar",
+              default: 1
+            }
+          },
+          required: ["product_id"]
+        }
+      }},
     required: []
   },
 
-  handler: async ({ customer_id, order_number, priority = "NORMAL", deadline, notes = "", is_stock = false }, { env }) => {
+  handler: async ({ customer_id, order_number, priority = "NORMAL", deadline, notes = "", is_stock = false, products = [] }, { env }) => {
     try {
       const apiKey = env?.API_KEY;
       if (!apiKey) throw new Error("API_KEY ortam değişkeni eksik.");
@@ -64,6 +82,11 @@ export default {
       // Deadline varsa ekle
       if (deadline) {
         requestBody.deadline = deadline;
+      }
+
+      // Ürünler varsa ekle
+      if (products && products.length > 0) {
+        requestBody.products = products;
       }
 
       const res = await fetch("https://üretimgo.com/api/mcp/orders/create", {
@@ -98,9 +121,13 @@ export default {
       if (deadline) {
         responseText += `📅 Termin: ${deadline}\n`;
       }
-      
-      if (notes) {
+        if (notes) {
         responseText += `📝 Not: ${notes}\n`;
+      }
+
+      if (data.totalStepsCreated > 0) {
+        responseText += `🔧 Oluşturulan Adım: ${data.totalStepsCreated}\n`;
+        responseText += `👥 Sorumlu Kullanıcı: ${data.assignedUsers}\n`;
       }
 
       responseText += `\n💡 İpucu: Sipariş detaylarını görmek için order_get tool'unu kullanabilirsin.`;

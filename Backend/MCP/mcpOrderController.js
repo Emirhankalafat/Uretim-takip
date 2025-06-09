@@ -108,7 +108,7 @@ const getOrderById = async (req, res) => {
 // Sipariş oluştur
 const createOrder = async (req, res) => {
   try {
-    const { api_key, Customer_id, order_number, priority = "NORMAL", deadline, notes = "", is_stock = false } = req.body;
+    const { api_key, Customer_id, order_number, priority = "NORMAL", deadline, notes = "", is_stock = false, products = [] } = req.body;
 
     if (!api_key) {
       return res.status(400).json({ error: "api_key zorunludur." });
@@ -163,18 +163,104 @@ const createOrder = async (req, res) => {
       }
     }
 
-    const newOrder = await prisma.orders.create({
-      data: {
-        Company_id: company.id,
-        Customer_id: Customer_id ? BigInt(Customer_id) : null,
-        order_number: finalOrderNumber,
-        priority,
-        deadline: deadline ? new Date(deadline) : null,
-        notes,
-        is_stock,
-        status: 'PENDING'
+    // Transaction ile sipariş, order items ve order steps oluştur
+    const result = await prisma.$transaction(async (tx) => {
+      // Sipariş oluştur
+      const newOrder = await tx.orders.create({
+        data: {
+          Company_id: company.id,
+          Customer_id: Customer_id ? BigInt(Customer_id) : null,
+          order_number: finalOrderNumber,
+          priority,
+          deadline: deadline ? new Date(deadline) : null,
+          notes,
+          is_stock,
+          status: 'PENDING'
+        }
+      });
+
+      let totalStepsCreated = 0;
+      const assignedUserIds = [];
+
+      // Eğer ürünler belirtilmişse order steps oluştur
+      if (products && products.length > 0) {
+        for (const productData of products) {
+          const { product_id, quantity = 1 } = productData;
+
+          // Ürün var mı kontrol et
+          const product = await tx.products.findFirst({
+            where: {
+              id: BigInt(product_id),
+              Company_id: company.id
+            }
+          });
+
+          if (!product) {
+            throw new Error(`Ürün bulunamadı: ${product_id}`);
+          }
+
+          // Order Item oluştur
+          await tx.orderItems.create({
+            data: {
+              Order_id: newOrder.id,
+              Product_id: BigInt(product_id),
+              quantity: quantity || 1
+            }
+          });
+
+          // ProductSteps'ten şablon olarak order steps oluştur
+          const productSteps = await tx.productSteps.findMany({
+            where: { Product_id: BigInt(product_id) },
+            orderBy: { Step_number: 'asc' }
+          });
+
+          // Her step için order step oluştur
+          for (const step of productSteps) {
+            // ProductSteps'ten gelen step'lerde Responsible_User kontrolü
+            if (!step.Responsible_User) {
+              throw new Error(`${step.Name} adımında sorumlu kullanıcı tanımlanmamış. Lütfen ürün adımlarını kontrol edin.`);
+            }
+
+            await tx.orderSteps.create({
+              data: {
+                Order_id: newOrder.id,
+                Product_id: BigInt(product_id),
+                step_name: step.Name,
+                step_description: step.Description,
+                step_number: step.Step_number,
+                assigned_user: step.Responsible_User,
+                status: 'WAITING'
+              }
+            });
+
+            totalStepsCreated++;
+            assignedUserIds.push(step.Responsible_User.toString());
+          }
+        }
       }
-    });    res.json({
+
+      return { 
+        order: newOrder, 
+        totalStepsCreated, 
+        assignedUserIds: [...new Set(assignedUserIds)] // Tekrarları kaldır
+      };
+    });
+
+    res.json({
+      order: {
+        ...result.order,
+        id: result.order.id.toString(),
+        Company_id: result.order.Company_id?.toString(),
+        Customer_id: result.order.Customer_id?.toString()
+      },
+      totalStepsCreated: result.totalStepsCreated,
+      assignedUsers: result.assignedUserIds.length
+    });
+  } catch (error) {
+    console.error("Sipariş oluşturma hatası:", error);
+    res.status(500).json({ error: "Sunucu hatası.", details: error.message });
+  }
+};res.json({
       order: {
         ...newOrder,
         id: newOrder.id.toString(),
